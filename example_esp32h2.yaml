@@ -1,0 +1,141 @@
+esphome:
+  name: zb-example-h2
+  platformio_options:
+    platform: https://github.com/luar123/platform-espressif32H2/archive/refs/tags/v6.6.1.0.zip
+
+external_components:
+  - source: components
+    components: [ zigbee ]
+
+esp32:
+  board: esp32-h2-devkitm-1
+  flash_size: 4MB
+  partitions: partitions_zb.csv
+  framework:
+    type: esp-idf
+    version: 5.2.1
+    sdkconfig_options:
+      CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y
+  variant: esp32h2
+
+# Enable logging
+logger:
+  hardware_uart: UART0
+
+globals:
+   - id: color_x
+     type: float
+     restore_value: no
+     initial_value: '0'
+   - id: color_y
+     type: float
+     restore_value: no
+     initial_value: '0'
+
+sensor:
+  - platform: internal_temperature
+    name: "Internal Temperature"
+    id: "temp"
+    filters:
+      - delta: 0.1
+    on_value:
+      then:
+        - zigbee.setAttr:
+            id: zb
+            endpoint: 2
+            cluster: TEMP_MEASUREMENT
+            attribute: 0x0
+            value: !lambda "return x*100;"
+
+zigbee:
+  id: "zb"
+  endpoints:
+    - num: 1
+      device_type: COLOR_DIMMABLE_LIGHT
+      clusters:
+        - id: ON_OFF
+          attributes:
+            - id: 0
+              type: bool
+              on_value:
+                then:
+                  - light.control:
+                      id: light_1
+                      state: !lambda "return (bool)x;"
+        - id: LEVEL_CONTROL
+          attributes:
+            - id: 0
+              type: U8
+              on_value:
+                then:
+                  - light.control:
+                      id: light_1
+                      brightness: !lambda "return ((float)x)/255;"
+        - id: COLOR_CONTROL
+          attributes:
+            - id: 3
+              type: U16
+              on_value:
+                then:
+                  - lambda: id(color_x) = (float)x/65536;
+                  - light.control:
+                      id: light_1
+                      red: !lambda "return zigbee::get_r_from_xy(id(color_x), id(color_y));"
+                      green: !lambda "return zigbee::get_g_from_xy(id(color_x), id(color_y));"
+                      blue: !lambda "return zigbee::get_b_from_xy(id(color_x), id(color_y));"
+            - id: 4
+              type: U16
+              on_value:
+                then:
+                  - lambda: id(color_y) = (float)x/65536;
+                  - light.control:
+                      id: light_1
+                      red: !lambda "return zigbee::get_r_from_xy(id(color_x), id(color_y));"
+                      green: !lambda "return zigbee::get_g_from_xy(id(color_x), id(color_y));"
+                      blue: !lambda "return zigbee::get_b_from_xy(id(color_x), id(color_y));"
+    - device_type: TEMPERATURE_SENSOR
+      num: 2
+      clusters:
+        - id: REL_HUMIDITY_MEASUREMENT
+          attributes:
+            - id: 0
+              type: U16
+              value: 200
+        - id: TEMP_MEASUREMENT
+          attributes:
+            - id: 0x0
+              type: S16
+              value: 100
+  on_join:
+    then:
+      - logger.log: "Joined network"
+
+light:
+  - platform: esp32_rmt_led_strip
+    rgb_order: GRB
+    pin: 8
+    num_leds: 1
+    rmt_channel: 0
+    id: light_1
+    bit0_high: 100ns # rmt clk freq seems to be different on H2
+    bit0_low: 300ns
+    bit1_high: 300ns
+    bit1_low: 100ns
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: 9
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    id: button_1
+    on_press:
+      then:
+        - zigbee.report: zb
+    on_click:
+      min_length: 5s
+      max_length: 20s
+      then:
+        - zigbee.reset: zb

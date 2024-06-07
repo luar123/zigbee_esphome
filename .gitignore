@@ -1,0 +1,10 @@
+# Gitignore settings for ESPHome
+# This is an example and may include too much for your use-case.
+# You can modify this file to suit your needs.
+/.esphome/
+/secrets.yaml
+/.vscode/
+__pycache__/
+/components/zigbee/files_to_parse/*.c
+/components/zigbee/files_to_parse/*.h
+/components/zigbee/files_to_parse/zigbee_const.py

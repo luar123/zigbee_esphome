@@ -1,0 +1,7 @@
+otadata,  data, ota,     ,        0x2000,
+phy_init, data, phy,     ,        0x1000,
+app0,     app,  ota_0,   ,        0x1B0000,
+app1,     app,  ota_1,   ,        0x1B0000,
+nvs,      data, nvs,     ,        0x6D000,
+zb_storage, data, fat,   , 16K,
+zb_fct,     data, fat,   , 1K,
