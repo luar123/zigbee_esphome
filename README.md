@@ -5,33 +5,41 @@ External ZigBee component for ESPHome.
 ### Features
 * Definition of endpoints, clusters and attributes supported by esp-zigbee-sdk 1.2
 * Set attributes action
-* manual report action
-* reset zigbee action
-* join trigger
-* attribute received trigger
-* deep-sleep should work
+* Manual report action
+* Reset zigbee action
+* Join trigger
+* Attribute received trigger
+* Deep-sleep should work
 * Not tested: groups/scenes
 
 ### Limitations
 * Only end devices
-* reporting is activated for all attributes with a set action
-* reporting can not be configured
-* no control devices like switches
-* needs esp-idf >=5.2.1
+* Attribute set action and OnValue trigger works only with integer types
+* Reporting is activated for all attributes with a set action
+* Reporting can not be configured
+* No control devices like switches
+* Needs esp-idf >=5.2.1
 
 ### ToDo List (Short-Mid term)
-* custom clusters/attributes
-* switch to esp-zigbee-sdk 1.3
-* time component
-* light effects (through identify cluster commands)
-* router devices
-* easier support for sensors
+* Custom clusters/attributes
+* Switch to esp-zigbee-sdk 1.3
+* Time component
+* Light effects (through identify cluster commands)
+* Router devices
+* Easier support for sensors
 
-### Not planed (feel free to submitt a PR)
-* coordinator devices
-* binding config in yaml
-* reporting config in yaml
-* control device support (e.g. switches)
+### Not planed (feel free to submit a PR)
+* Coordinator devices
+* Binding config in yaml
+* Reporting config in yaml
+* Control device support (e.g. switches)
+
+### Notes
+* I don't have much free time to work on this right now, so feel free to fork/improve/create PRs/etc.
+* At the moment, the C++ implementation is rather simple and generic. I tried to keep as much logic as possible in the python part. However, endpoints/clusters/attributes could also be classes, this would simplify the yaml setup but requires more sophisticated C++ code. 
+* There is also a project with more advanced C++ zigbee libraries for esp32 that could be used here as well: https://github.com/Muk911/esphome/tree/main/esp32c6/hello-zigbee
+* [parse_zigbee_headers.py](components/zigbee/files_to_parse/parse_zigbee_headers.py) is used to create the python enums and C helper functions automatically from zigbee sdk headers.
+* Deprecated [custom zigbee component](https://github.com/luar123/esphome_zb_sensor)
 
 ## Usage
 
@@ -92,12 +100,29 @@ zigbee:
 ```
 
 ### Actions
+* zigbee.setAttr
+  * id: "id of zigbee component"
+  * endpoint: "endpoint number"
+  * cluster: "cluster id"
+  * attribute: "attribute id"
+  * value: "value, can be a lambda"
+    * only integer types
 * zigbee.report: "id of zigbee component"
   * Manually send reports
 * zigbee.reset: "id of zigbee component"
-  * Reset Zigbee Network and Device. Leave the current network and trys to join open networks.
+  * Reset Zigbee Network and Device. Leave the current network and tries to join open networks.
 
-Example:
+Examples:
+```
+    on_value:
+      then:
+        - zigbee.setAttr:
+            id: zb
+            endpoint: 2
+            cluster: REL_HUMIDITY_MEASUREMENT
+            attribute: 0x0
+            value: !lambda "return x*100;"
+```
 ```
     on_press:
       then:
@@ -113,7 +138,7 @@ ESPHome Zigbee using only dev board or additionally [AHT10 Temperature+Humidity 
 ### Hardware Required
 
 * One development board with ESP32-H2 or ESP32-C6 SoC acting as Zigbee end-device (that you will load ESPHome with the example config to).
-  * For example the official [ESP32-H2-DevKitM-1](https://docs.espressif.com/projects/espressif-esp-dev-kits/en/latest/esp32h2/esp32-h2-devkitm-1/user_guide.html) development kit board.
+  * For example, the official [ESP32-H2-DevKitM-1](https://docs.espressif.com/projects/espressif-esp-dev-kits/en/latest/esp32h2/esp32-h2-devkitm-1/user_guide.html) development kit board.
 * [AHT10 Temperature+Humidity Sensor](https://next.esphome.io/components/sensor/aht10) connected to I2C pins (SDA: 12, SCL: 22) for the aht10 example.
 * A USB cable for power supply and programming.
 * (Optional) A USB-C cable to get ESP32 logs from the UART USB port (UART0).
@@ -121,14 +146,8 @@ ESPHome Zigbee using only dev board or additionally [AHT10 Temperature+Humidity 
 ### Build ESPHome Zigbee sensor
 
 * We will build [example_esp32h2.yaml](example_esp32h2.yaml) file.
-* Check [Getting Started with the ESPHome Command Line](https://esphome.io/guides/getting_started_command_line.html) tutorial to setup your dev environment.
+* Check [Getting Started with the ESPHome Command Line](https://esphome.io/guides/getting_started_command_line.html) tutorial to set up your dev environment.
 * Build with `esphome run example_esp32h2.yaml`. 
-
-### Notes
-I don't have much free time to work on this right now, so feel free to fork/improve/create PRs/etc.
-There is also a project with more advanced C++ zigbee libraries for esp32 that could be used here as well: https://github.com/Muk911/esphome/tree/main/esp32c6/hello-zigbee 
-
-[parse_zigbee_headers.py](components/zigbee/files_to_parse/parse_zigbee_headers.py) is used to create the python enums and C helper functions automatically from zigbee sdk headers.
 
 ## How to contribute
 
@@ -136,7 +155,7 @@ Please submit PRs targeting the zigbee external component to https://github.com/
 
 PRs targeting the examples or documentation should be submitted here.
 
-If looking to contribute to this project then suggest follow steps in these guides + look at issues in Espressif's ESP Zigbee SDK repoository:
+If looking to contribute to this project, then suggest follow steps in these guides + look at issues in Espressif's ESP Zigbee SDK repository:
 
 - https://github.com/espressif/esp-zigbee-sdk/issues
 - https://github.com/firstcontributions/first-contributions/blob/master/README.md
