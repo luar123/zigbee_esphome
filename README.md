@@ -19,6 +19,7 @@ External ZigBee component for ESPHome.
 * Reporting can not be configured
 * No control devices like switches
 * Needs esp-idf >=5.2.1
+* zigbee and zboss libraries are loaded from the [ESP Compnenet Registry](https://components.espressif.com/) using [idf_component.yml](https://github.com/luar123/zigbee_esphome/blob/master/components/zigbee/idf_component.yml). This is bypassing the esphome and platformio component handling, but works fine as long as zigbee is the only component using this approach.
 
 ### ToDo List (Short-Mid term)
 * Custom clusters/attributes
