@@ -52,6 +52,7 @@ CONF_ATTRIBUTES = "attributes"
 CONF_ROLE = "role"
 CONF_ENDPOINT = "endpoint"
 CONF_CLUSTER = "cluster"
+CONF_REPORT = "report"
 
 zigbee_ns = cg.esphome_ns.namespace("zigbee")
 ZigBeeComponent = zigbee_ns.class_("ZigBeeComponent", cg.Component)
@@ -124,6 +125,7 @@ CONFIG_SCHEMA = cv.All(
                                                     ATTR_TYPE, upper=True
                                                 ),
                                                 cv.Optional(CONF_VALUE): cv.valid,
+                                                cv.Optional(CONF_REPORT): cv.valid,
                                                 cv.Optional(
                                                     CONF_ON_VALUE
                                                 ): automation.validate_automation(
@@ -238,6 +240,16 @@ async def to_code(config):
                             attr[CONF_VALUE],
                         )
                     )
+                if CONF_REPORT in attr and attr[CONF_REPORT] is True:
+                    cg.add(
+                        var.set_report(
+                            ep[CONF_ENDPOINT_NUM],
+                            CLUSTER_ID[cl[CONF_ID]],
+                            CLUSTER_ROLE[cl[CONF_ROLE]],
+                            attr[CONF_ID],
+                        )
+                    )
+
                 for conf in attr.get(CONF_ON_VALUE, []):
                     trigger = cg.new_Pvariable(
                         conf[CONF_TRIGGER_ID], cg.TemplateArguments(int), var
@@ -314,13 +326,5 @@ async def zigbee_set_attr_to_code(config, action_id, template_arg, args):
     )
     template_ = await cg.templatable(config[CONF_VALUE], args, cg.int64)
     cg.add(var.set_value(template_))
-    cg.add(
-        parent.set_report(
-            config[CONF_ENDPOINT],
-            config[CONF_CLUSTER],
-            config[CONF_ROLE],
-            config[CONF_ATTRIBUTE],
-        )
-    )
 
     return var
