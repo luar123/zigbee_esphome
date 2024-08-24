@@ -23,7 +23,7 @@ device_params_t coord;
 
 /********************* Define functions **************************/
 uint8_t *get_character_string(std::string str) {
-  uint8_t *cstr = new uint8_t[(str.size() + 1)];
+  uint8_t *cstr = new uint8_t[(str.size() + 2)];
   std::snprintf((char *) (cstr + 1), str.size() + 1, "%s", str.c_str());
   cstr[0] = str.size();
 
@@ -252,12 +252,14 @@ void ZigBeeComponent::create_basic_cluster(std::string model, std::string manufa
       .zcl_version = ESP_ZB_ZCL_BASIC_ZCL_VERSION_DEFAULT_VALUE,
       .power_source = power,
   };
+  ESP_LOGI(TAG, "Model: %s", model.c_str());
+  ESP_LOGI(TAG, "Manufacturer: %s", manufacturer.c_str());
+  ESP_LOGI(TAG, "Date: %s", date.c_str());
+  ESP_LOGI(TAG, "Area: %s", area.c_str());
   uint8_t *ManufacturerName = get_character_string(manufacturer);  // warning: this is in format {length, 'string'} :
   uint8_t *ModelIdentifier = get_character_string(model);
   uint8_t *DateCode = get_character_string(date);
   uint8_t *Location = get_character_string(area);
-  ESP_LOGI(TAG, "Manufacturer: %s", manufacturer.c_str());
-  ESP_LOGI(TAG, "Manufacturer: %s", ManufacturerName);
   this->esp_zb_basic_cluster = esp_zb_basic_cluster_create(&basic_cluster_cfg);
   esp_zb_basic_cluster_add_attr(esp_zb_basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_APPLICATION_VERSION_ID, &app_version);
   esp_zb_basic_cluster_add_attr(esp_zb_basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_STACK_VERSION_ID, &stack_version);
@@ -267,7 +269,6 @@ void ZigBeeComponent::create_basic_cluster(std::string model, std::string manufa
   esp_zb_basic_cluster_add_attr(esp_zb_basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_DATE_CODE_ID, DateCode);
   esp_zb_basic_cluster_add_attr(esp_zb_basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_LOCATION_DESCRIPTION_ID, Location);
   esp_zb_basic_cluster_add_attr(esp_zb_basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_PHYSICAL_ENVIRONMENT_ID, &physical_env);
-  delete ManufacturerName;
 }
 
 void ZigBeeComponent::create_ident_cluster(uint8_t ident_time) {

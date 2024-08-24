@@ -15,8 +15,7 @@ External ZigBee component for ESPHome.
 ### Limitations
 * Only end devices
 * Attribute set action and OnValue trigger works only with integer types
-* Reporting is activated for all attributes with a set action
-* Reporting can not be configured
+* Reporting can be enabled, but not configured
 * No control devices like switches
 * Needs esp-idf >=5.2.1
 * zigbee and zboss libraries are loaded from the [ESP Compnenet Registry](https://components.espressif.com/) using [idf_component.yml](https://github.com/luar123/zigbee_esphome/blob/master/components/zigbee/idf_component.yml). This is bypassing the esphome and platformio component handling, but works fine as long as zigbee is the only component using this approach.
@@ -89,11 +88,13 @@ zigbee:
           attributes:
             - id: 0
               type: U16
+              report: true
               value: 200
         - id: TEMP_MEASUREMENT
           attributes:
             - id: 0x0
               type: S16
+              report: true
               value: 100
   on_join:
     then:

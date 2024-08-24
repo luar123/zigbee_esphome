@@ -70,6 +70,7 @@ sensor:
 
 zigbee:
   id: "zb"
+  name: esp32-c6-dev-kit-n8
   endpoints:
     - num: 1
       device_type: COLOR_DIMMABLE_LIGHT
@@ -121,11 +122,13 @@ zigbee:
           attributes:
             - id: 0
               type: U16
+              report: true
               value: 200
         - id: TEMP_MEASUREMENT
           attributes:
             - id: 0x0
               type: S16
+              report: true
               value: 100
   on_join:
     then:

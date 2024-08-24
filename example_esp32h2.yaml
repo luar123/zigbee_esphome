@@ -100,11 +100,13 @@ zigbee:
           attributes:
             - id: 0
               type: U16
+              report: true
               value: 200
         - id: TEMP_MEASUREMENT
           attributes:
             - id: 0x0
               type: S16
+              report: true
               value: 100
   on_join:
     then:
