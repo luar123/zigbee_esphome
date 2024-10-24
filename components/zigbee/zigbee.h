@@ -2,7 +2,6 @@
 
 #include <map>
 #include <tuple>
-#include <stdfloat>
 #include <deque>
 
 #include "esp_zigbee_core.h"
@@ -33,10 +32,10 @@ typedef struct zdo_info_ctx_s {
   ESP_ZB_TRANSCEIVER_ALL_CHANNELS_MASK /* Zigbee primary channel mask use in the example */
 
 #define ESP_ZB_DEFAULT_RADIO_CONFIG() \
-  { .radio_mode = RADIO_MODE_NATIVE, }
+  { .radio_mode = ZB_RADIO_MODE_NATIVE, }
 
 #define ESP_ZB_DEFAULT_HOST_CONFIG() \
-  { .host_connection_mode = HOST_CONNECTION_MODE_NONE, }
+  { .host_connection_mode = ZB_HOST_CONNECTION_MODE_NONE, }
 
 template<class T> T getValueByType(uint8_t attr_type, void *data);
 
@@ -45,10 +44,10 @@ class ZigBeeComponent : public Component {
   void setup() override;
   void dump_config() override;
   void create_endpoint(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id);
-  void create_ident_cluster(uint8_t ident_time);
-  void create_basic_cluster(std::string model, std::string manufacturer, std::string date, uint8_t power,
-                            uint8_t app_version, uint8_t stack_version, uint8_t hw_version, std::string area,
-                            uint8_t physical_env);
+  void set_ident_time(uint8_t ident_time);
+  void set_basic_cluster(std::string model, std::string manufacturer, std::string date, uint8_t power,
+                         uint8_t app_version, uint8_t stack_version, uint8_t hw_version, std::string area,
+                         uint8_t physical_env);
   void add_cluster(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role);
   void create_default_cluster(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id);
 
@@ -77,14 +76,26 @@ class ZigBeeComponent : public Component {
 
  protected:
   void esp_zb_task();
+  esp_zb_attribute_list_t *create_ident_cluster();
+  esp_zb_attribute_list_t *create_basic_cluster();
   bool connected = false;
   std::map<uint8_t, esp_zb_ha_standard_devices_t> endpoint_list;
   std::map<uint8_t, esp_zb_cluster_list_t *> cluster_list;
   std::map<std::tuple<uint8_t, uint16_t, uint8_t>, esp_zb_attribute_list_t *> attribute_list;
   esp_zb_nwk_device_type_t device_role = ESP_ZB_DEVICE_TYPE_ED;
   esp_zb_ep_list_t *esp_zb_ep_list = esp_zb_ep_list_create();
-  esp_zb_attribute_list_t *esp_zb_basic_cluster;
-  esp_zb_attribute_list_t *esp_zb_identify_cluster;
+  struct {
+    std::string model;
+    std::string manufacturer;
+    std::string date;
+    uint8_t power;
+    uint8_t app_version;
+    uint8_t stack_version;
+    uint8_t hw_version;
+    std::string area;
+    uint8_t physical_env;
+  } basic_cluster_data;
+  uint8_t ident_time;
 };
 
 extern "C" void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct);

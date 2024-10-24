@@ -1,7 +1,5 @@
 esphome:
   name: zb-sensor
-  platformio_options:
-    platform: https://github.com/luar123/platform-espressif32H2/archive/refs/tags/v6.6.1.0.zip
 
 external_components:
   - source: components
@@ -13,8 +11,9 @@ esp32:
   partitions: partitions_zb.csv
   framework:
     type: esp-idf
-    version: 5.2.1
-    # source: https://github.com/espressif/esp-idf/releases/download/v5.1.3/esp-idf-v5.1.3.zip
+    version: 5.1.4
+    source: https://github.com/pioarduino/esp-idf/releases/download/v5.1.4.240921/esp-idf-v5.1.4.zip
+    platform_version: https://github.com/pioarduino/platform-espressif32/releases/download/51.03.05/platform-espressif32.zip
     sdkconfig_options:
       CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y
   variant: esp32h2
@@ -70,7 +69,6 @@ sensor:
 
 zigbee:
   id: "zb"
-  name: esp32-c6-dev-kit-n8
   endpoints:
     - num: 1
       device_type: COLOR_DIMMABLE_LIGHT

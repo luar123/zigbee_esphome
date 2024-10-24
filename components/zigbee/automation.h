@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdfloat>
+//#include <stdfloat> //deactive because not working with esp-idf 5.1.4
 
 #include "esphome/core/component.h"
 #include "esphome/core/automation.h"
@@ -158,11 +158,11 @@ template<class T> T getValueByType(uint8_t attr_type, void *data) {
     case ESP_ZB_ZCL_ATTR_TYPE_16BIT_ENUM:
       return (T) * (uint16_t *) data;
     case ESP_ZB_ZCL_ATTR_TYPE_SEMI:
-      return (T) * (std::float16_t *) data;
+      return 0;  //(T) * (std::float16_t *) data;
     case ESP_ZB_ZCL_ATTR_TYPE_SINGLE:
-      return (T) * (std::float32_t *) data;
+      return 0;  //(T) * (std::float32_t *) data;
     case ESP_ZB_ZCL_ATTR_TYPE_DOUBLE:
-      return (T) * (std::float64_t *) data;
+      return 0;  //(T) * (std::float64_t *) data;
     case ESP_ZB_ZCL_ATTR_TYPE_OCTET_STRING:
       return 0;
     case ESP_ZB_ZCL_ATTR_TYPE_CHAR_STRING:

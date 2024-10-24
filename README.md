@@ -1,9 +1,12 @@
+> [!WARNING]
+> **With the latest commit a different way of loading the zigbee sdk libs is used. Therefore it is recommended to delete the `.esphome/build/<name>/` folder.**
+
 # ESPHome ZigBee external component
 
 External ZigBee component for ESPHome.
 
 ### Features
-* Definition of endpoints, clusters and attributes supported by esp-zigbee-sdk 1.2
+* Definition of endpoints, clusters and attributes supported by esp-zigbee-sdk 1.5
 * Set attributes action
 * Manual report action
 * Reset zigbee action
@@ -17,12 +20,11 @@ External ZigBee component for ESPHome.
 * Attribute set action and OnValue trigger works only with integer types
 * Reporting can be enabled, but not configured
 * No control devices like switches
-* Needs esp-idf >=5.2.1
-* zigbee and zboss libraries are loaded from the [ESP Compnenet Registry](https://components.espressif.com/) using [idf_component.yml](https://github.com/luar123/zigbee_esphome/blob/master/components/zigbee/idf_component.yml). This is bypassing the esphome and platformio component handling, but works fine as long as zigbee is the only component using this approach.
+* Needs esp-idf >=5.1.4
 
 ### ToDo List (Short-Mid term)
 * Custom clusters/attributes
-* Switch to esp-zigbee-sdk 1.3
+* Switch to esp-zigbee-sdk 1.5 (done)
 * Time component
 * Light effects (through identify cluster commands)
 * Router devices

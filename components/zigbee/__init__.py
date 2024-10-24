@@ -1,43 +1,33 @@
-import os
 import datetime
-import esphome.config_validation as cv
+
+from esphome import automation
 import esphome.codegen as cg
 from esphome.components.esp32 import (
-    # add_idf_component,
-    add_idf_sdkconfig_option,
-    add_extra_build_file,
     CONF_PARTITIONS,
+    # add_extra_build_file,
+    add_idf_component,
+    add_idf_sdkconfig_option,
     only_on_variant,
 )
-from esphome.components.esp32.const import (
-    VARIANT_ESP32H2,
-    VARIANT_ESP32C6,
-)
-from esphome.core import CORE
-from esphome import automation
-import esphome.final_validate as fv
-
-
+from esphome.components.esp32.const import VARIANT_ESP32C6, VARIANT_ESP32H2
+import esphome.config_validation as cv
 from esphome.const import (
-    CONF_ID,
     CONF_AREA,
+    CONF_ATTRIBUTE,
     CONF_DATE,
-    CONF_TRIGGER_ID,
+    CONF_ID,
     CONF_NAME,
+    CONF_ON_VALUE,
     CONF_POWER_SUPPLY,
+    CONF_TRIGGER_ID,
     CONF_TYPE,
     CONF_VALUE,
     CONF_VERSION,
-    CONF_ON_VALUE,
-    CONF_ATTRIBUTE,
 )
+from esphome.core import CORE
+import esphome.final_validate as fv
 
-from .zigbee_const import (
-    DEVICE_ID,
-    CLUSTER_ID,
-    CLUSTER_ROLE,
-    ATTR_TYPE,
-)
+from .zigbee_const import ATTR_TYPE, CLUSTER_ID, CLUSTER_ROLE, DEVICE_ID
 
 DEPENDENCIES = ["esp32"]
 
@@ -164,22 +154,23 @@ CONFIG_SCHEMA = cv.All(
 
 
 async def to_code(config):
-    add_extra_build_file(
-        "src/idf_component.yml",
-        os.path.join(os.path.dirname(__file__), "idf_component.yml"),
+    # use component manager:
+    # add_extra_build_file(
+    #    "src/idf_component.yml",
+    #    os.path.join(os.path.dirname(__file__), "idf_component.yml"),
+    # )
+    # use add_idf_component: v1.5.1
+    add_idf_component(
+        name="espressif__esp-zboss-lib",
+        repo="https://github.com/espressif/esp-zboss-lib.git",
+        ref="c90b7d6c335f520ff4607e233be9f64f35e909c2",
     )
-    # change this to idf component (not working at the moment)
-    #    add_idf_component(
-    #            name="esp-zboss-lib",
-    #            repo="https://github.com/espressif/esp-zboss-lib.git",
-    #            ref="838714a0aa580ebcbd2e59652666eceb9b7e6649",
-    #        )
-    #    add_idf_component(
-    #            name="esp-zigbee-lib",
-    #            repo="https://github.com/espressif/esp-zigbee-sdk.git",
-    #            path="components/esp-zigbee-lib",
-    #            ref="4d68ccf0443770b40610892a1e598963d7fb154f",
-    #        )
+    add_idf_component(
+        name="esp-zigbee-lib",
+        repo="https://github.com/espressif/esp-zigbee-sdk.git",
+        path="components/esp-zigbee-lib",
+        ref="c5be1da5c349103a85928ed02ca924c0f657b314",
+    )
     add_idf_sdkconfig_option("CONFIG_ZB_ENABLED", True)
     add_idf_sdkconfig_option("CONFIG_ZB_ZED", True)
     add_idf_sdkconfig_option("CONFIG_ZB_RADIO_NATIVE", True)
@@ -188,7 +179,7 @@ async def to_code(config):
     if CONF_NAME not in config:
         config[CONF_NAME] = CORE.name or ""
     cg.add(
-        var.create_basic_cluster(
+        var.set_basic_cluster(
             config[CONF_NAME],
             config[CONF_MANUFACTURER],
             config[CONF_DATE],
@@ -201,7 +192,7 @@ async def to_code(config):
         )
     )
     if CONF_IDENT in config:
-        cg.add(var.create_ident_cluster(config[CONF_IDENT]))
+        cg.add(var.set_ident_time(config[CONF_IDENT]))
     for ep in config[CONF_ENDPOINTS]:
         cg.add(
             var.create_default_cluster(

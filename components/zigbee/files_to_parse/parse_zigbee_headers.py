@@ -83,7 +83,6 @@ remove_cl = [
     'binary_value',
     'multi_input',
     'multi_output',
-    'commissioning',
     'poll_control',
     'green_power',
     'keep_alive',
@@ -96,19 +95,19 @@ def write_cluster_list_aou(enums):
     enum = list(filter(lambda e: e.declname == 'esp_zb_zcl_cluster_id_t', enums))[0]
     ids = [e.name for e in enum.type.values.enumerators]
     to_py = 'esp_err_t esphome_zb_cluster_list_add_or_update_cluster(uint16_t cluster_id, esp_zb_cluster_list_t *cluster_list, esp_zb_attribute_list_t *attr_list, uint8_t role_mask) {\n  esp_err_t ret;\n'
-    to_py += "  switch (cluster_id) {\n"
+    to_py += f'  ret = esp_zb_cluster_list_update_cluster(cluster_list, attr_list, cluster_id, role_mask);\n'
+    to_py += '  if (ret != ESP_OK) {\n'
+    to_py += "    switch (cluster_id) {\n"
     for id in ids:
         cluster_name = id.removeprefix("ESP_ZB_ZCL_CLUSTER_ID_").lower()
         if cluster_name in remove_cl:
             continue
         for k, i in replacements_cl.items():
             cluster_name = cluster_name.replace(k, i)
-        to_py += f'    case {id}:\n'
-        to_py += f'      ret = esp_zb_cluster_list_update_{cluster_name}_cluster(cluster_list, attr_list, role_mask);\n'
-        to_py +=  '      if (ret != ESP_OK) {\n'
+        to_py += f'      case {id}:\n'
         to_py += f'        ret = esp_zb_cluster_list_add_{cluster_name}_cluster(cluster_list, attr_list, role_mask);\n'
-        to_py +=  '      }\n      break;\n'
-    to_py += '    default:\n      ret = ESP_FAIL;\n  }\n  return ret;\n}\n\n'
+        to_py +=  '        break;\n'
+    to_py += '      default:\n        ret = ESP_FAIL;\n    }\n  }\n  return ret;\n}\n\n'
     return to_py
 
 replacements_attrl = {
@@ -121,13 +120,9 @@ replacements_attrl = {
     'rel_humidity_measurement': 'humidity_meas',
     'electrical_measurement': 'electrical_meas',
     'flow_measurement': 'flow_meas',
-    'on_off_switch_config': 'on_off_switch_cfg',
 }
 
-void_list = [
-    'price',
-    'diagnostics'
-]
+void_list = []
 
 def write_attr_list_create(enums):
     enum = list(filter(lambda e: e.declname == 'esp_zb_zcl_cluster_id_t', enums))[0]
@@ -156,15 +151,15 @@ remove_attra = [
     'binary_value',
     'multi_input',
     'multi_output',
-    'commissioning',
     'poll_control',
     'green_power',
     'keep_alive',
     'pump_config_control',
     'dehumid_control',
     'ballast_config',
+    'ias_ace',
     'price',
-    'metering'
+    'metering',
 ]
 
 def write_attr_add(enums):
