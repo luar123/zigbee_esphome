@@ -87,6 +87,7 @@ esp_err_t esphome_zb_cluster_list_add_or_update_cluster(uint16_t cluster_id, esp
   esp_err_t ret;
   ret = esp_zb_cluster_list_update_cluster(cluster_list, attr_list, cluster_id, role_mask);
   if (ret != ESP_OK) {
+    ESP_LOGE("zigbee_helper", "Ignore previous cluster not found error");
     switch (cluster_id) {
       case ESP_ZB_ZCL_CLUSTER_ID_BASIC:
         ret = esp_zb_cluster_list_add_basic_cluster(cluster_list, attr_list, role_mask);

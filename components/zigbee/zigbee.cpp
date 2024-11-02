@@ -31,7 +31,9 @@ uint8_t *get_character_string(std::string str) {
 }
 
 static void bdb_start_top_level_commissioning_cb(uint8_t mode_mask) {
-  ESP_ERROR_CHECK(esp_zb_bdb_start_top_level_commissioning(mode_mask));
+  if (esp_zb_bdb_start_top_level_commissioning(mode_mask) != ESP_OK) {
+    ESP_LOGE(TAG, "Start network steering failed!");
+  }
 }
 
 void ZigBeeComponent::set_attr(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
@@ -303,14 +305,14 @@ esp_zb_attribute_list_t *ZigBeeComponent::create_ident_cluster() {
   return esp_zb_identify_cluster_create(&identify_cluster_cfg);
 }
 
-void ZigBeeComponent::create_endpoint(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id) {
+esp_err_t ZigBeeComponent::create_endpoint(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id) {
   esp_zb_cluster_list_t *esp_zb_cluster_list = this->cluster_list[endpoint_id];
   // ------------------------------ Create endpoint list ------------------------------
   esp_zb_endpoint_config_t endpoint_config = {.endpoint = endpoint_id,
                                               .app_profile_id = ESP_ZB_AF_HA_PROFILE_ID,
                                               .app_device_id = device_id,
                                               .app_device_version = 0};
-  ESP_ERROR_CHECK(esp_zb_ep_list_add_ep(this->esp_zb_ep_list, esp_zb_cluster_list, endpoint_config));
+  return esp_zb_ep_list_add_ep(this->esp_zb_ep_list, esp_zb_cluster_list, endpoint_config);
 }
 
 void ZigBeeComponent::esp_zb_task() {
@@ -329,16 +331,26 @@ void ZigBeeComponent::esp_zb_task() {
   // clusters
   for (auto const &[key, val] : this->attribute_list) {
     esp_zb_cluster_list_t *esp_zb_cluster_list = this->cluster_list[std::get<0>(key)];
-    esphome_zb_cluster_list_add_or_update_cluster(std::get<1>(key), esp_zb_cluster_list, val, std::get<2>(key));
+    if (esphome_zb_cluster_list_add_or_update_cluster(std::get<1>(key), esp_zb_cluster_list, val, std::get<2>(key)) !=
+        ESP_OK) {
+      ESP_LOGE(TAG, "Could not create cluster 0x%04X with role %u", std::get<1>(key), std::get<2>(key));
+    }
   }
 
   // endpoints
   for (auto const &[ep_id, dev_id] : this->endpoint_list) {
     // create_default_cluster(key, val);
-    create_endpoint(ep_id, dev_id);
+    if (create_endpoint(ep_id, dev_id) != ESP_OK) {
+      ESP_LOGE(TAG, "Could not create endpoint %u", ep_id);
+    }
   }
+
   // ------------------------------ Register Device ------------------------------
-  ESP_ERROR_CHECK(esp_zb_device_register(this->esp_zb_ep_list));
+  if (esp_zb_device_register(this->esp_zb_ep_list) != ESP_OK) {
+    ESP_LOGE(TAG, "Could not register the endpoint list");
+    this->mark_failed();
+    vTaskDelete(NULL);
+  }
   esp_zb_core_action_handler_register(zb_action_handler);
 
   // reporting
@@ -351,12 +363,23 @@ void ZigBeeComponent::esp_zb_task() {
         .manuf_code = reporting_info.manuf_code,
         .attr_id = reporting_info.attr_id,
     };
-    ESP_ERROR_CHECK(esp_zb_zcl_update_reporting_info(&reporting_info));
-    ESP_ERROR_CHECK(esp_zb_zcl_start_attr_reporting(attr_info));  // is this needed?
+    if (esp_zb_zcl_update_reporting_info(&reporting_info) != ESP_OK) {
+      ESP_LOGE(TAG, "Could not configure reporting for attribute 0x%04X in cluster 0x%04X in endpoint %u",
+               reporting_info.attr_id, reporting_info.cluster_id, reporting_info.ep);
+    }
+    // ESP_ERROR_CHECK(esp_zb_zcl_start_attr_reporting(attr_info));  // is this needed?
   }
 
-  ESP_ERROR_CHECK(esp_zb_set_primary_network_channel_set(ESP_ZB_PRIMARY_CHANNEL_MASK));
-  ESP_ERROR_CHECK(esp_zb_start(false));
+  if (esp_zb_set_primary_network_channel_set(ESP_ZB_PRIMARY_CHANNEL_MASK) != ESP_OK) {
+    ESP_LOGE(TAG, "Could not setup Zigbee");
+    this->mark_failed();
+    vTaskDelete(NULL);
+  }
+  if (esp_zb_start(false) != ESP_OK) {
+    ESP_LOGE(TAG, "Could not setup Zigbee");
+    this->mark_failed();
+    vTaskDelete(NULL);
+  }
 
   esp_zb_stack_main_loop();
 }
@@ -367,8 +390,11 @@ void ZigBeeComponent::setup() {
       .radio_config = ESP_ZB_DEFAULT_RADIO_CONFIG(),
       .host_config = ESP_ZB_DEFAULT_HOST_CONFIG(),
   };
-  ESP_ERROR_CHECK(nvs_flash_init());
-  ESP_ERROR_CHECK(esp_zb_platform_config(&config));
+  // ESP_ERROR_CHECK(nvs_flash_init()); not needed, called by esp32 component
+  if (esp_zb_platform_config(&config) != ESP_OK) {
+    this->mark_failed();
+    return;
+  }
   xTaskCreate([](void *arg) { static_cast<ZigBeeComponent *>(arg)->esp_zb_task(); }, "Zigbee_main", 4096, this, 24,
               NULL);
 }

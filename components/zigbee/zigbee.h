@@ -43,7 +43,7 @@ class ZigBeeComponent : public Component {
  public:
   void setup() override;
   void dump_config() override;
-  void create_endpoint(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id);
+  esp_err_t create_endpoint(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id);
   void set_ident_time(uint8_t ident_time);
   void set_basic_cluster(std::string model, std::string manufacturer, std::string date, uint8_t power,
                          uint8_t app_version, uint8_t stack_version, uint8_t hw_version, std::string area,
