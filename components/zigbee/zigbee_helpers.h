@@ -18,4 +18,9 @@ esp_err_t esphome_zb_cluster_add_or_update_attr(uint16_t cluster_id, esp_zb_attr
 
 #ifdef __cplusplus
 }
+
+namespace esphome {
+namespace zigbee {}
+}  // namespace esphome
+
 #endif

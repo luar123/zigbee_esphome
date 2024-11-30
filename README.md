@@ -1,5 +1,6 @@
-> [!WARNING]
-> **With the latest commit a different way of loading the zigbee sdk libs is used. Therefore it is recommended to delete the `.esphome/build/<name>/` folder.**
+> [!Important]
+> **If you get build errors try to delete the `.esphome/build/<name>/` folder first.**
+> **If the esp crashes try to delete completely with `esptool.py erase_flash` and flash again.**
 
 # ESPHome ZigBee external component
 
@@ -12,6 +13,7 @@ External ZigBee component for ESPHome.
 * Reset zigbee action
 * Join trigger
 * Attribute received trigger
+* Wifi co-existence on ESP32-C6
 * Deep-sleep should work
 * Not tested: groups/scenes
 
@@ -155,9 +157,7 @@ ESPHome Zigbee using only dev board or additionally [AHT10 Temperature+Humidity 
 
 ## How to contribute
 
-Please submit PRs targeting the zigbee external component to https://github.com/luar123/esphome/tree/zigbee
-
-PRs targeting the examples or documentation should be submitted here.
+**Please submit all PRs here** and not to https://github.com/luar123/esphome/tree/zigbee
 
 If looking to contribute to this project, then suggest follow steps in these guides + look at issues in Espressif's ESP Zigbee SDK repository:
 

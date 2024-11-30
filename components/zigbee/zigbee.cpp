@@ -6,6 +6,9 @@
 #include "zigbee.h"
 #include "esphome/core/log.h"
 #include "zigbee_helpers.h"
+#ifdef CONFIG_WIFI_COEX
+#include "esp_coexist.h"
+#endif
 
 #if !defined ZB_ED_ROLE
 #error Define ZB_ED_ROLE in idf.py menuconfig to compile light (End Device) source code.
@@ -16,7 +19,7 @@ namespace zigbee {
 
 static const char *const TAG = "zigbee";
 // uint8_t HA_ESP_LIGHT_ENDPOINT;
-bool connected = false;
+bool connected_ = false;
 ZigBeeComponent *zigbeeC;
 
 device_params_t coord;
@@ -150,7 +153,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
                  extended_pan_id[2], extended_pan_id[1], extended_pan_id[0], esp_zb_get_pan_id(),
                  esp_zb_get_current_channel());
         zigbeeC->on_join_callback_.call();
-        connected = true;
+        connected_ = true;
 
         memcpy(&(coord.ieee_addr), extended_pan_id, sizeof(esp_zb_ieee_addr_t));
         coord.endpoint = 1;
@@ -227,29 +230,29 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
 }
 
 void ZigBeeComponent::create_default_cluster(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id) {
-  this->cluster_list[endpoint_id] = esphome_zb_default_clusters_create(device_id);
-  this->endpoint_list[endpoint_id] = device_id;
+  this->cluster_list_[endpoint_id] = esphome_zb_default_clusters_create(device_id);
+  this->endpoint_list_[endpoint_id] = device_id;
 }
 
 void ZigBeeComponent::add_cluster(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role) {
   esp_zb_attribute_list_t *attr_list;
   switch (cluster_id) {
     case 0:
-      attr_list = create_basic_cluster();
+      attr_list = create_basic_cluster_();
       break;
     case 3:
-      attr_list = create_ident_cluster();
+      attr_list = create_ident_cluster_();
       break;
     default:
       attr_list = esphome_zb_default_attr_list_create(cluster_id);
   }
-  this->attribute_list[{endpoint_id, cluster_id, role}] = attr_list;
+  this->attribute_list_[{endpoint_id, cluster_id, role}] = attr_list;
 }
 
 void ZigBeeComponent::set_basic_cluster(std::string model, std::string manufacturer, std::string date, uint8_t power,
                                         uint8_t app_version, uint8_t stack_version, uint8_t hw_version,
                                         std::string area, uint8_t physical_env) {
-  this->basic_cluster_data = {
+  this->basic_cluster_data_ = {
       .model = model,
       .manufacturer = manufacturer,
       .date = date,
@@ -262,75 +265,76 @@ void ZigBeeComponent::set_basic_cluster(std::string model, std::string manufactu
   };
 }
 
-esp_zb_attribute_list_t *ZigBeeComponent::create_basic_cluster() {
+esp_zb_attribute_list_t *ZigBeeComponent::create_basic_cluster_() {
   // ------------------------------ Cluster BASIC ------------------------------
   esp_zb_basic_cluster_cfg_t basic_cluster_cfg = {
       .zcl_version = ESP_ZB_ZCL_BASIC_ZCL_VERSION_DEFAULT_VALUE,
-      .power_source = this->basic_cluster_data.power,
+      .power_source = this->basic_cluster_data_.power,
   };
-  ESP_LOGI(TAG, "Model: %s", this->basic_cluster_data.model.c_str());
-  ESP_LOGI(TAG, "Manufacturer: %s", this->basic_cluster_data.manufacturer.c_str());
-  ESP_LOGI(TAG, "Date: %s", this->basic_cluster_data.date.c_str());
-  ESP_LOGI(TAG, "Area: %s", this->basic_cluster_data.area.c_str());
+  ESP_LOGI(TAG, "Model: %s", this->basic_cluster_data_.model.c_str());
+  ESP_LOGI(TAG, "Manufacturer: %s", this->basic_cluster_data_.manufacturer.c_str());
+  ESP_LOGI(TAG, "Date: %s", this->basic_cluster_data_.date.c_str());
+  ESP_LOGI(TAG, "Area: %s", this->basic_cluster_data_.area.c_str());
   uint8_t *ManufacturerName =
-      get_character_string(this->basic_cluster_data.manufacturer);  // warning: this is in format {length, 'string'} :
-  uint8_t *ModelIdentifier = get_character_string(this->basic_cluster_data.model);
-  uint8_t *DateCode = get_character_string(this->basic_cluster_data.date);
-  uint8_t *Location = get_character_string(this->basic_cluster_data.area);
+      get_character_string(this->basic_cluster_data_.manufacturer);  // warning: this is in format {length, 'string'} :
+  uint8_t *ModelIdentifier = get_character_string(this->basic_cluster_data_.model);
+  uint8_t *DateCode = get_character_string(this->basic_cluster_data_.date);
+  uint8_t *Location = get_character_string(this->basic_cluster_data_.area);
   esp_zb_attribute_list_t *attr_list = esp_zb_basic_cluster_create(&basic_cluster_cfg);
   esp_zb_basic_cluster_add_attr(attr_list, ESP_ZB_ZCL_ATTR_BASIC_APPLICATION_VERSION_ID,
-                                &(this->basic_cluster_data.app_version));
+                                &(this->basic_cluster_data_.app_version));
   esp_zb_basic_cluster_add_attr(attr_list, ESP_ZB_ZCL_ATTR_BASIC_STACK_VERSION_ID,
-                                &(this->basic_cluster_data.stack_version));
-  esp_zb_basic_cluster_add_attr(attr_list, ESP_ZB_ZCL_ATTR_BASIC_HW_VERSION_ID, &(this->basic_cluster_data.hw_version));
+                                &(this->basic_cluster_data_.stack_version));
+  esp_zb_basic_cluster_add_attr(attr_list, ESP_ZB_ZCL_ATTR_BASIC_HW_VERSION_ID,
+                                &(this->basic_cluster_data_.hw_version));
   esp_zb_basic_cluster_add_attr(attr_list, ESP_ZB_ZCL_ATTR_BASIC_MANUFACTURER_NAME_ID, ManufacturerName);
   esp_zb_basic_cluster_add_attr(attr_list, ESP_ZB_ZCL_ATTR_BASIC_MODEL_IDENTIFIER_ID, ModelIdentifier);
   esp_zb_basic_cluster_add_attr(attr_list, ESP_ZB_ZCL_ATTR_BASIC_DATE_CODE_ID, DateCode);
   esp_zb_basic_cluster_add_attr(attr_list, ESP_ZB_ZCL_ATTR_BASIC_LOCATION_DESCRIPTION_ID, Location);
   esp_zb_basic_cluster_add_attr(attr_list, ESP_ZB_ZCL_ATTR_BASIC_PHYSICAL_ENVIRONMENT_ID,
-                                &(this->basic_cluster_data.physical_env));
+                                &(this->basic_cluster_data_.physical_env));
   return attr_list;
 }
 
 void ZigBeeComponent::set_ident_time(uint8_t ident_time) {
   // ------------------------------ Cluster IDENTIFY ------------------------------
-  this->ident_time = ident_time;
+  this->ident_time_ = ident_time;
 }
 
-esp_zb_attribute_list_t *ZigBeeComponent::create_ident_cluster() {
+esp_zb_attribute_list_t *ZigBeeComponent::create_ident_cluster_() {
   // ------------------------------ Cluster IDENTIFY ------------------------------
   esp_zb_identify_cluster_cfg_t identify_cluster_cfg = {
-      .identify_time = this->ident_time,
+      .identify_time = this->ident_time_,
   };
   return esp_zb_identify_cluster_create(&identify_cluster_cfg);
 }
 
 esp_err_t ZigBeeComponent::create_endpoint(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id) {
-  esp_zb_cluster_list_t *esp_zb_cluster_list = this->cluster_list[endpoint_id];
+  esp_zb_cluster_list_t *esp_zb_cluster_list = this->cluster_list_[endpoint_id];
   // ------------------------------ Create endpoint list ------------------------------
   esp_zb_endpoint_config_t endpoint_config = {.endpoint = endpoint_id,
                                               .app_profile_id = ESP_ZB_AF_HA_PROFILE_ID,
                                               .app_device_id = device_id,
                                               .app_device_version = 0};
-  return esp_zb_ep_list_add_ep(this->esp_zb_ep_list, esp_zb_cluster_list, endpoint_config);
+  return esp_zb_ep_list_add_ep(this->esp_zb_ep_list_, esp_zb_cluster_list, endpoint_config);
 }
 
-void ZigBeeComponent::esp_zb_task() {
+void ZigBeeComponent::esp_zb_task_() {
   /* initialize Zigbee stack */
   esp_zb_zed_cfg_t zb_zed_cfg = {
       .ed_timeout = ED_AGING_TIMEOUT,
       .keep_alive = ED_KEEP_ALIVE,
   };
   esp_zb_cfg_t zb_nwk_cfg = {
-      .esp_zb_role = this->device_role,
+      .esp_zb_role = this->device_role_,
       .install_code_policy = INSTALLCODE_POLICY_ENABLE,
   };
   zb_nwk_cfg.nwk_cfg.zed_cfg = zb_zed_cfg;
   esp_zb_init(&zb_nwk_cfg);
 
   // clusters
-  for (auto const &[key, val] : this->attribute_list) {
-    esp_zb_cluster_list_t *esp_zb_cluster_list = this->cluster_list[std::get<0>(key)];
+  for (auto const &[key, val] : this->attribute_list_) {
+    esp_zb_cluster_list_t *esp_zb_cluster_list = this->cluster_list_[std::get<0>(key)];
     if (esphome_zb_cluster_list_add_or_update_cluster(std::get<1>(key), esp_zb_cluster_list, val, std::get<2>(key)) !=
         ESP_OK) {
       ESP_LOGE(TAG, "Could not create cluster 0x%04X with role %u", std::get<1>(key), std::get<2>(key));
@@ -338,7 +342,7 @@ void ZigBeeComponent::esp_zb_task() {
   }
 
   // endpoints
-  for (auto const &[ep_id, dev_id] : this->endpoint_list) {
+  for (auto const &[ep_id, dev_id] : this->endpoint_list_) {
     // create_default_cluster(key, val);
     if (create_endpoint(ep_id, dev_id) != ESP_OK) {
       ESP_LOGE(TAG, "Could not create endpoint %u", ep_id);
@@ -346,7 +350,7 @@ void ZigBeeComponent::esp_zb_task() {
   }
 
   // ------------------------------ Register Device ------------------------------
-  if (esp_zb_device_register(this->esp_zb_ep_list) != ESP_OK) {
+  if (esp_zb_device_register(this->esp_zb_ep_list_) != ESP_OK) {
     ESP_LOGE(TAG, "Could not register the endpoint list");
     this->mark_failed();
     vTaskDelete(NULL);
@@ -390,18 +394,24 @@ void ZigBeeComponent::setup() {
       .radio_config = ESP_ZB_DEFAULT_RADIO_CONFIG(),
       .host_config = ESP_ZB_DEFAULT_HOST_CONFIG(),
   };
+#ifdef CONFIG_WIFI_COEX
+  if (esp_coex_wifi_i154_enable() != ESP_OK) {
+    this->mark_failed();
+    return;
+  }
+#endif
   // ESP_ERROR_CHECK(nvs_flash_init()); not needed, called by esp32 component
   if (esp_zb_platform_config(&config) != ESP_OK) {
     this->mark_failed();
     return;
   }
-  xTaskCreate([](void *arg) { static_cast<ZigBeeComponent *>(arg)->esp_zb_task(); }, "Zigbee_main", 4096, this, 24,
+  xTaskCreate([](void *arg) { static_cast<ZigBeeComponent *>(arg)->esp_zb_task_(); }, "Zigbee_main", 4096, this, 24,
               NULL);
 }
 
 void ZigBeeComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "ZigBee:");
-  for (auto const &[key, val] : this->endpoint_list) {
+  for (auto const &[key, val] : this->endpoint_list_) {
     ESP_LOGCONFIG(TAG, "Endpoint: %u, %d", key, val);
   }
 }

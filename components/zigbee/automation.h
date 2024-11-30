@@ -9,8 +9,6 @@
 namespace esphome {
 namespace zigbee {
 
-template<class T> T getValueByType(uint8_t attr_type, void *data);
-
 class ZigBeeJoinTrigger : public Trigger<> {
  public:
   explicit ZigBeeJoinTrigger(ZigBeeComponent *parent) {
@@ -57,10 +55,10 @@ template<typename Ts> class ZigBeeOnValueTrigger : public Trigger<Ts>, public Co
  public:
   explicit ZigBeeOnValueTrigger(ZigBeeComponent *parent) : parent_(parent) {}
   void set_attr(uint8_t endpoint_id, uint16_t cluster_id, uint16_t attr_id, uint8_t attr_type) {
-    this->ep_id = endpoint_id;
-    this->cl_id = cluster_id;
-    this->attr_id = attr_id;
-    this->attr_type = attr_type;
+    this->ep_id_ = endpoint_id;
+    this->cl_id_ = cluster_id;
+    this->attr_id_ = attr_id;
+    this->attr_type_ = attr_type;
   }
   void setup() override {
     this->parent_->add_on_value_callback([this](esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute) {
@@ -70,22 +68,22 @@ template<typename Ts> class ZigBeeOnValueTrigger : public Trigger<Ts>, public Co
 
  protected:
   void on_value_(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute) {
-    if (info.dst_endpoint == this->ep_id) {
-      if (info.cluster == this->cl_id) {
-        if (attribute.id == this->attr_id && attribute.data.type == attr_type && attribute.data.value) {
-          this->trigger(getValueByType<Ts>(attr_type, attribute.data.value));
+    if (info.dst_endpoint == this->ep_id_) {
+      if (info.cluster == this->cl_id_) {
+        if (attribute.id == this->attr_id_ && attribute.data.type == attr_type_ && attribute.data.value) {
+          this->trigger(get_value_by_type<Ts>(attr_type_, attribute.data.value));
         }
       }
     }
   }
   ZigBeeComponent *parent_;
-  uint8_t ep_id;
-  uint16_t cl_id;
-  uint16_t attr_id;
-  uint8_t attr_type;
+  uint8_t ep_id_;
+  uint16_t cl_id_;
+  uint16_t attr_id_;
+  uint8_t attr_type_;
 };
 
-template<class T> T getValueByType(uint8_t attr_type, void *data) {
+template<class T> T get_value_by_type(uint8_t attr_type, void *data) {
   switch (attr_type) {
     case ESP_ZB_ZCL_ATTR_TYPE_8BIT:
       return (T) * (uint8_t *) data;

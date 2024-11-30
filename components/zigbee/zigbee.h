@@ -13,16 +13,16 @@
 namespace esphome {
 namespace zigbee {
 
-typedef struct device_params_s {
+using device_params_t = struct DeviceParamsS {
   esp_zb_ieee_addr_t ieee_addr;
   uint8_t endpoint;
   uint16_t short_addr;
-} device_params_t;
+};
 
-typedef struct zdo_info_ctx_s {
+using zdo_info_user_ctx_t = struct ZdoInfoCtxS {
   uint8_t endpoint;
   uint16_t short_addr;
-} zdo_info_user_ctx_t;
+};
 
 /* Zigbee configuration */
 #define INSTALLCODE_POLICY_ENABLE false /* enable the install code policy for security */
@@ -37,7 +37,7 @@ typedef struct zdo_info_ctx_s {
 #define ESP_ZB_DEFAULT_HOST_CONFIG() \
   { .host_connection_mode = ZB_HOST_CONNECTION_MODE_NONE, }
 
-template<class T> T getValueByType(uint8_t attr_type, void *data);
+template<class T> T get_value_by_type(uint8_t attr_type, void *data);
 
 class ZigBeeComponent : public Component {
  public:
@@ -64,7 +64,7 @@ class ZigBeeComponent : public Component {
   }
   void report();
 
-  void add_on_join_callback(std::function<void()> callback) { on_join_callback_.add(std::move(callback)); }
+  void add_on_join_callback(std::function<void()> &&callback) { this->on_join_callback_.add(std::move(callback)); }
   void add_on_value_callback(
       std::function<void(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute)> callback) {
     on_value_callback_.add(std::move(callback));
@@ -75,15 +75,15 @@ class ZigBeeComponent : public Component {
   std::deque<esp_zb_zcl_reporting_info_t> reporting_list;
 
  protected:
-  void esp_zb_task();
-  esp_zb_attribute_list_t *create_ident_cluster();
-  esp_zb_attribute_list_t *create_basic_cluster();
-  bool connected = false;
-  std::map<uint8_t, esp_zb_ha_standard_devices_t> endpoint_list;
-  std::map<uint8_t, esp_zb_cluster_list_t *> cluster_list;
-  std::map<std::tuple<uint8_t, uint16_t, uint8_t>, esp_zb_attribute_list_t *> attribute_list;
-  esp_zb_nwk_device_type_t device_role = ESP_ZB_DEVICE_TYPE_ED;
-  esp_zb_ep_list_t *esp_zb_ep_list = esp_zb_ep_list_create();
+  void esp_zb_task_();
+  esp_zb_attribute_list_t *create_ident_cluster_();
+  esp_zb_attribute_list_t *create_basic_cluster_();
+  bool connected_ = false;
+  std::map<uint8_t, esp_zb_ha_standard_devices_t> endpoint_list_;
+  std::map<uint8_t, esp_zb_cluster_list_t *> cluster_list_;
+  std::map<std::tuple<uint8_t, uint16_t, uint8_t>, esp_zb_attribute_list_t *> attribute_list_;
+  esp_zb_nwk_device_type_t device_role_ = ESP_ZB_DEVICE_TYPE_ED;
+  esp_zb_ep_list_t *esp_zb_ep_list_ = esp_zb_ep_list_create();
   struct {
     std::string model;
     std::string manufacturer;
@@ -94,15 +94,15 @@ class ZigBeeComponent : public Component {
     uint8_t hw_version;
     std::string area;
     uint8_t physical_env;
-  } basic_cluster_data;
-  uint8_t ident_time;
+  } basic_cluster_data_;
+  uint8_t ident_time_;
 };
 
 extern "C" void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct);
 
 template<typename T>
 void ZigBeeComponent::add_attr(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id, T value_p) {
-  esp_zb_attribute_list_t *attr_list = this->attribute_list[{endpoint_id, cluster_id, role}];
+  esp_zb_attribute_list_t *attr_list = this->attribute_list_[{endpoint_id, cluster_id, role}];
   esphome_zb_cluster_add_or_update_attr(cluster_id, attr_list, attr_id, &value_p);
 }
 
