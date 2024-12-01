@@ -260,3 +260,8 @@ ATTR_TYPE = {
     "128_BIT_KEY": attr_type.ESP_ZB_ZCL_ATTR_TYPE_128_BIT_KEY,
     "INVALID": attr_type.ESP_ZB_ZCL_ATTR_TYPE_INVALID,
 }
+ATTR_ACCESS = {
+    "READ_ONLY": 1,
+    "WRITE_ONLY": 2,
+    "READ_WRITE": 3,
+}

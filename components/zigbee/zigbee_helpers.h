@@ -14,7 +14,8 @@ esp_zb_attribute_list_t *esphome_zb_default_attr_list_create(uint16_t cluster_id
 esp_err_t esphome_zb_cluster_add_attr(uint16_t cluster_id, esp_zb_attribute_list_t *attr_list, uint16_t attr_id,
                                       void *value_p);
 esp_err_t esphome_zb_cluster_add_or_update_attr(uint16_t cluster_id, esp_zb_attribute_list_t *attr_list,
-                                                uint16_t attr_id, void *value_p);
+                                                uint16_t attr_id, uint8_t attr_type, uint8_t attr_access,
+                                                void *value_p);
 
 #ifdef __cplusplus
 }

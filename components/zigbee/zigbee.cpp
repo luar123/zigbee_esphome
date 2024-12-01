@@ -330,13 +330,15 @@ void ZigBeeComponent::esp_zb_task_() {
   };
   zb_nwk_cfg.nwk_cfg.zed_cfg = zb_zed_cfg;
   esp_zb_init(&zb_nwk_cfg);
+  esp_err_t ret;
 
   // clusters
   for (auto const &[key, val] : this->attribute_list_) {
     esp_zb_cluster_list_t *esp_zb_cluster_list = this->cluster_list_[std::get<0>(key)];
-    if (esphome_zb_cluster_list_add_or_update_cluster(std::get<1>(key), esp_zb_cluster_list, val, std::get<2>(key)) !=
-        ESP_OK) {
-      ESP_LOGE(TAG, "Could not create cluster 0x%04X with role %u", std::get<1>(key), std::get<2>(key));
+    ret = esphome_zb_cluster_list_add_or_update_cluster(std::get<1>(key), esp_zb_cluster_list, val, std::get<2>(key));
+    if (ret != ESP_OK) {
+      ESP_LOGE(TAG, "Could not create cluster 0x%04X with role %u: %s", std::get<1>(key), std::get<2>(key),
+               esp_err_to_name(ret));
     }
   }
 

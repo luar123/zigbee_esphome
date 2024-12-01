@@ -30,7 +30,7 @@ from esphome.const import (
 from esphome.core import CORE, EsphomeError
 import esphome.final_validate as fv
 
-from .zigbee_const import ATTR_TYPE, CLUSTER_ID, CLUSTER_ROLE, DEVICE_ID
+from .zigbee_const import ATTR_ACCESS, ATTR_TYPE, CLUSTER_ID, CLUSTER_ROLE, DEVICE_ID
 
 DEPENDENCIES = ["esp32"]
 
@@ -46,6 +46,7 @@ CONF_ROLE = "role"
 CONF_ENDPOINT = "endpoint"
 CONF_CLUSTER = "cluster"
 CONF_REPORT = "report"
+CONF_ACCESS = "access"
 
 zigbee_ns = cg.esphome_ns.namespace("zigbee")
 ZigBeeComponent = zigbee_ns.class_("ZigBeeComponent", cg.Component)
@@ -82,6 +83,42 @@ def get_c_type(attr_type):
     if test and test.group(1):
         return getattr(cg, "int" + get_c_size(test.group(1), [16, 32, 64]))
     raise EsphomeError(f"Zigbee: type {attr_type} not supported or implemented")
+
+
+def get_cv_by_type(attr_type):
+    if attr_type == "BOOL":
+        return cv.boolean
+    if attr_type in ["SEMI", "SINGLE", "DOUBLE"]:
+        return cv.float_
+    if "STRING" in attr_type:
+        return cv.string
+    test = re.match(r"(^U?)(\d{1,2})(BITMAP$|BIT$|BIT_ENUM$|$)", attr_type)
+    if test and test.group(2):
+        return cv.positive_int
+    test = re.match(r"^S(\d{1,2})$", attr_type)
+    if test and test.group(1):
+        return cv.int_
+    raise cv.Invalid(f"Zigbee: type {attr_type} not supported or implemented")
+
+
+def validate_clusters(config):
+    for attr in config.get(CONF_ATTRIBUTES):
+        if isinstance(config.get(CONF_ID), int) and config.get(CONF_ID) >= 0xFC00:
+            if not {CONF_TYPE, CONF_ACCESS, CONF_VALUE} <= attr.keys():
+                raise cv.Invalid(
+                    f"Parameters {CONF_TYPE}, {CONF_VALUE} and {CONF_ACCESS} are need for custom cluster."
+                )
+    return config
+
+
+def validate_attributes(config):
+    if CONF_ACCESS in config and (CONF_TYPE not in config or CONF_VALUE not in config):
+        raise cv.Invalid(
+            f"If parameter {CONF_ACCESS} is set parameters {CONF_TYPE} and {CONF_VALUE} are requiered."
+        )
+    if CONF_TYPE in config and CONF_VALUE in config:
+        config[CONF_VALUE] = get_cv_by_type(config[CONF_TYPE])(config[CONF_VALUE])
+    return config
 
 
 def final_validate(config):
@@ -130,8 +167,9 @@ CONFIG_SCHEMA = cv.All(
                         cv.Optional(CONF_CLUSTERS, default={}): cv.ensure_list(
                             cv.Schema(
                                 {
-                                    cv.Required(CONF_ID): cv.enum(
-                                        CLUSTER_ID, upper=True
+                                    cv.Required(CONF_ID): cv.Any(
+                                        cv.enum(CLUSTER_ID, upper=True),
+                                        cv.int_range(0xFC00, 0xFFFF),
                                     ),
                                     cv.Optional(CONF_ROLE, default="Server"): cv.enum(
                                         CLUSTER_ROLE, upper=True
@@ -143,8 +181,13 @@ CONFIG_SCHEMA = cv.All(
                                                 cv.Optional(CONF_TYPE): cv.enum(
                                                     ATTR_TYPE, upper=True
                                                 ),
+                                                cv.Optional(CONF_ACCESS): cv.enum(
+                                                    ATTR_ACCESS, upper=True
+                                                ),
                                                 cv.Optional(CONF_VALUE): cv.valid,
-                                                cv.Optional(CONF_REPORT): cv.valid,
+                                                cv.Optional(
+                                                    CONF_REPORT, default=False
+                                                ): cv.boolean,
                                                 cv.Optional(
                                                     CONF_ON_VALUE
                                                 ): automation.validate_automation(
@@ -157,13 +200,15 @@ CONFIG_SCHEMA = cv.All(
                                                     }
                                                 ),
                                             }
-                                        )
+                                        ),
+                                        validate_attributes,
                                     ),
-                                }
-                            )
+                                },
+                            ),
+                            validate_clusters,
                         ),
                     }
-                )
+                ),
             ),
             cv.Optional(CONF_ON_JOIN): automation.validate_automation(
                 {
@@ -258,27 +303,34 @@ async def to_code(config):
             cg.add(
                 var.add_cluster(
                     ep[CONF_NUM],
-                    CLUSTER_ID[cl[CONF_ID]],
-                    CLUSTER_ROLE[cl[CONF_ROLE]],
+                    cl[CONF_ID],
+                    cl[CONF_ROLE],
                 )
             )
             for attr in cl[CONF_ATTRIBUTES]:
                 if CONF_VALUE in attr:
+                    access = (
+                        ATTR_ACCESS[attr[CONF_ACCESS]] + attr[CONF_REPORT] * 4
+                        if CONF_ACCESS in attr
+                        else 0
+                    )
                     cg.add(
                         var.add_attr(
                             ep[CONF_NUM],
-                            CLUSTER_ID[cl[CONF_ID]],
-                            CLUSTER_ROLE[cl[CONF_ROLE]],
+                            cl[CONF_ID],
+                            cl[CONF_ROLE],
                             attr[CONF_ID],
+                            attr.get(CONF_TYPE, 0),
+                            access,
                             attr[CONF_VALUE],
                         )
                     )
-                if CONF_REPORT in attr and attr[CONF_REPORT] is True:
+                if attr[CONF_REPORT]:
                     cg.add(
                         var.set_report(
                             ep[CONF_NUM],
-                            CLUSTER_ID[cl[CONF_ID]],
-                            CLUSTER_ROLE[cl[CONF_ROLE]],
+                            cl[CONF_ID],
+                            cl[CONF_ROLE],
                             attr[CONF_ID],
                         )
                     )
@@ -293,7 +345,7 @@ async def to_code(config):
                     cg.add(
                         trigger.set_attr(
                             ep[CONF_NUM],
-                            CLUSTER_ID[cl[CONF_ID]],
+                            cl[CONF_ID],
                             attr[CONF_ID],
                             attr[CONF_TYPE],
                         )

@@ -55,7 +55,8 @@ class ZigBeeComponent : public Component {
   void create_default_cluster(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id);
 
   template<typename T>
-  void add_attr(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id, T value_p);
+  void add_attr(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id, uint8_t attr_type,
+                uint8_t attr_access, T value_p);
 
   void set_attr(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id, void *value_p);
   void set_report(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id);
@@ -104,9 +105,11 @@ class ZigBeeComponent : public Component {
 extern "C" void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct);
 
 template<typename T>
-void ZigBeeComponent::add_attr(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id, T value_p) {
+void ZigBeeComponent::add_attr(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
+                               uint8_t attr_type, uint8_t attr_access, T value_p) {
   esp_zb_attribute_list_t *attr_list = this->attribute_list_[{endpoint_id, cluster_id, role}];
-  if (esphome_zb_cluster_add_or_update_attr(cluster_id, attr_list, attr_id, &value_p) != ESP_OK) {
+  if (esphome_zb_cluster_add_or_update_attr(cluster_id, attr_list, attr_id, attr_type, attr_access, &value_p) !=
+      ESP_OK) {
     ESP_LOGE(TAG, "Could not add attribute 0x%04X to cluster 0x%04X in endpoint %u", attr_id, cluster_id, endpoint_id);
   }
 }

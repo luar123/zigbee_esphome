@@ -2,6 +2,9 @@
 > **If you get build errors try to delete the `.esphome/build/<name>/` folder first.**
 > **If the esp crashes try to delete completely with `esptool.py erase_flash` and flash again.**
 
+> [!Important]
+> **Config validation is not complete. Always consult [Zigbee Cluster Library](https://csa-iot.org/wp-content/uploads/2022/01/07-5123-08-Zigbee-Cluster-Library-1.pdf) for cluster definitions**
+
 # ESPHome ZigBee external component
 
 External ZigBee component for ESPHome.
@@ -25,7 +28,7 @@ External ZigBee component for ESPHome.
 * Needs esp-idf >=5.1.4
 
 ### ToDo List (Short-Mid term)
-* Custom clusters/attributes
+* Custom clusters/attributes (done)
 * Switch to esp-zigbee-sdk 1.5 (done)
 * Time component
 * Light effects (through identify cluster commands)

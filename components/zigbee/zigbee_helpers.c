@@ -73,11 +73,16 @@ esp_zb_cluster_list_t *esphome_zb_default_clusters_create(esp_zb_ha_standard_dev
 }
 
 esp_err_t esphome_zb_cluster_add_or_update_attr(uint16_t cluster_id, esp_zb_attribute_list_t *attr_list,
-                                                uint16_t attr_id, void *value_p) {
+                                                uint16_t attr_id, uint8_t attr_type, uint8_t attr_access,
+                                                void *value_p) {
   esp_err_t ret;
   ret = esp_zb_cluster_update_attr(attr_list, attr_id, value_p);
   if (ret != ESP_OK) {
-    ret = esphome_zb_cluster_add_attr(cluster_id, attr_list, attr_id, value_p);
+    if (attr_access > 0) {
+      ret = esp_zb_cluster_add_attr(attr_list, cluster_id, attr_id, attr_type, attr_access, value_p);
+    } else {
+      ret = esphome_zb_cluster_add_attr(cluster_id, attr_list, attr_id, value_p);
+    }
   }
   return ret;
 }
@@ -219,7 +224,7 @@ esp_err_t esphome_zb_cluster_list_add_or_update_cluster(uint16_t cluster_id, esp
         ret = esp_zb_cluster_list_add_diagnostics_cluster(cluster_list, attr_list, role_mask);
         break;
       default:
-        ret = ESP_FAIL;
+        ret = esp_zb_cluster_list_add_custom_cluster(cluster_list, attr_list, role_mask);
     }
   }
   return ret;
