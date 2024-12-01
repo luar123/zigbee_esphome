@@ -17,7 +17,6 @@
 namespace esphome {
 namespace zigbee {
 
-static const char *const TAG = "zigbee";
 // uint8_t HA_ESP_LIGHT_ENDPOINT;
 bool connected_ = false;
 ZigBeeComponent *zigbeeC;

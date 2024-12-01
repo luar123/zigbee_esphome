@@ -26,10 +26,10 @@ template<typename... Ts> class ReportAction : public Action<Ts...>, public Paren
   void play(Ts... x) override { this->parent_->report(); }
 };
 
-template<typename... Ts> class SetAttrAction : public Action<Ts...> {
+template<typename T, typename... Ts> class SetAttrAction : public Action<Ts...> {
  public:
   SetAttrAction(ZigBeeComponent *parent) : parent_(parent) {}
-  TEMPLATABLE_VALUE(int64_t, value);
+  TEMPLATABLE_VALUE(T, value);
 
   void set_target(uint8_t ep, uint16_t cluster, uint8_t role, uint16_t attr) {
     this->ep_ = ep;
@@ -39,7 +39,7 @@ template<typename... Ts> class SetAttrAction : public Action<Ts...> {
   }
 
   void play(Ts... x) override {
-    int64_t value = this->value_.value(x...);
+    T value = this->value_.value(x...);
     this->parent_->set_attr(this->ep_, this->cluster_, this->role_, this->attr_, &value);
   }
 
@@ -85,82 +85,8 @@ template<typename Ts> class ZigBeeOnValueTrigger : public Trigger<Ts>, public Co
 
 template<class T> T get_value_by_type(uint8_t attr_type, void *data) {
   switch (attr_type) {
-    case ESP_ZB_ZCL_ATTR_TYPE_8BIT:
-      return (T) * (uint8_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_16BIT:
-      return (T) * (uint16_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_24BIT:
-      return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_32BIT:
-      return (T) * (uint32_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_40BIT:
-      return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_48BIT:
-      return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_56BIT:
-      return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_64BIT:
-      return (T) * (uint64_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_BOOL:
-      return (T) * (bool *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_8BITMAP:
-      return (T) * (uint8_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_16BITMAP:
-      return (T) * (uint16_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_24BITMAP:
-      return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_32BITMAP:
-      return (T) * (uint32_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_40BITMAP:
-      return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_48BITMAP:
-      return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_56BITMAP:
-      return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_64BITMAP:
-      return (T) * (uint64_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_U8:
-      return (T) * (uint8_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_U16:
-      return (T) * (uint16_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_U24:
-      return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_U32:
-      return (T) * (uint32_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_U40:
-      return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_U48:
-      return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_U56:
-      return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_U64:
-      return (T) * (uint64_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_S8:
-      return (T) * (int8_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_S16:
-      return (T) * (int16_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_S24:
-      return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_S32:
-      return (T) * (int32_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_S40:
-      return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_S48:
-      return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_S56:
-      return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_S64:
-      return (T) * (int64_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM:
-      return (T) * (uint8_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_16BIT_ENUM:
-      return (T) * (uint16_t *) data;
     case ESP_ZB_ZCL_ATTR_TYPE_SEMI:
       return 0;  //(T) * (std::float16_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_SINGLE:
-      return 0;  //(T) * (std::float32_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_DOUBLE:
-      return 0;  //(T) * (std::float64_t *) data;
     case ESP_ZB_ZCL_ATTR_TYPE_OCTET_STRING:
       return 0;
     case ESP_ZB_ZCL_ATTR_TYPE_CHAR_STRING:
@@ -198,7 +124,7 @@ template<class T> T get_value_by_type(uint8_t attr_type, void *data) {
     case ESP_ZB_ZCL_ATTR_TYPE_128_BIT_KEY:
       return 0;
     default:
-      return 0;
+      return *(T *) data;
   }
 }
 

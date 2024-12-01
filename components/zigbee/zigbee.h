@@ -9,9 +9,12 @@
 #include "ha/esp_zigbee_ha_standard.h"
 #include "esphome/core/component.h"
 #include "esphome/core/automation.h"
+#include "zigbee_helpers.h"
 
 namespace esphome {
 namespace zigbee {
+
+static const char *const TAG = "zigbee";
 
 using device_params_t = struct DeviceParamsS {
   esp_zb_ieee_addr_t ieee_addr;
@@ -103,7 +106,9 @@ extern "C" void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct);
 template<typename T>
 void ZigBeeComponent::add_attr(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id, T value_p) {
   esp_zb_attribute_list_t *attr_list = this->attribute_list_[{endpoint_id, cluster_id, role}];
-  esphome_zb_cluster_add_or_update_attr(cluster_id, attr_list, attr_id, &value_p);
+  if (esphome_zb_cluster_add_or_update_attr(cluster_id, attr_list, attr_id, &value_p) != ESP_OK) {
+    ESP_LOGE(TAG, "Could not add attribute 0x%04X to cluster 0x%04X in endpoint %u", attr_id, cluster_id, endpoint_id);
+  }
 }
 
 }  // namespace zigbee

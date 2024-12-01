@@ -4,8 +4,6 @@
 namespace esphome {
 namespace zigbee {
 
-static const char *const TAG = "zigbee.automation";
-
 float get_r_from_xy(float x, float y) {
   float z = 1.0f - x - y;
   float X = x / y;

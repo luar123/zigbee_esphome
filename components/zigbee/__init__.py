@@ -1,4 +1,5 @@
 import datetime
+import re
 
 from esphome import automation
 import esphome.codegen as cg
@@ -26,7 +27,7 @@ from esphome.const import (
     CONF_VERSION,
     CONF_WIFI,
 )
-from esphome.core import CORE
+from esphome.core import CORE, EsphomeError
 import esphome.final_validate as fv
 
 from .zigbee_const import ATTR_TYPE, CLUSTER_ID, CLUSTER_ROLE, DEVICE_ID
@@ -59,6 +60,28 @@ SetAttrAction = zigbee_ns.class_("SetAttrAction", automation.Action)
 ReportAction = zigbee_ns.class_(
     "ReportAction", automation.Action, cg.Parented.template(ZigBeeComponent)
 )
+
+
+def get_c_size(bits, options):
+    return str([n for n in options if n >= int(bits)][0])
+
+
+def get_c_type(attr_type):
+    if attr_type == "BOOL":
+        return cg.bool_
+    if attr_type == "SINGLE":
+        return cg.float_
+    if attr_type == "DOUBLE":
+        return cg.double
+    if "STRING" in attr_type:
+        return cg.std_string
+    test = re.match(r"(^U?)(\d{1,2})(BITMAP$|BIT$|BIT_ENUM$|$)", attr_type)
+    if test and test.group(2):
+        return getattr(cg, "uint" + get_c_size(test.group(2), [8, 16, 32, 64]))
+    test = re.match(r"^S(\d{1,2})$", attr_type)
+    if test and test.group(1):
+        return getattr(cg, "int" + get_c_size(test.group(1), [16, 32, 64]))
+    raise EsphomeError(f"Zigbee: type {attr_type} not supported or implemented")
 
 
 def final_validate(config):
@@ -159,6 +182,20 @@ CONFIG_SCHEMA = cv.All(
 )
 
 
+# pylint: disable=too-many-nested-blocks
+def find_attr(conf, endpoint, cluster, role, attribute):
+    for ep in conf[CONF_ENDPOINTS]:
+        if ep[CONF_NUM] == endpoint:
+            for cl in ep[CONF_CLUSTERS]:
+                if cl[CONF_ID] == cluster:
+                    for attr in cl[CONF_ATTRIBUTES]:
+                        if attr[CONF_ID] == attribute:
+                            return attr
+    raise EsphomeError(
+        f"Zigbee: Cannot find attribute {attribute} in cluster {cluster} in endpoint {endpoint}."
+    )
+
+
 async def to_code(config):
     # use component manager:
     # add_extra_build_file(
@@ -248,7 +285,9 @@ async def to_code(config):
 
                 for conf in attr.get(CONF_ON_VALUE, []):
                     trigger = cg.new_Pvariable(
-                        conf[CONF_TRIGGER_ID], cg.TemplateArguments(int), var
+                        conf[CONF_TRIGGER_ID],
+                        cg.TemplateArguments(get_c_type(attr[CONF_TYPE])),
+                        var,
                     )
                     await cg.register_component(trigger, conf)
                     cg.add(
@@ -259,7 +298,9 @@ async def to_code(config):
                             attr[CONF_TYPE],
                         )
                     )
-                    await automation.build_automation(trigger, [(int, "x")], conf)
+                    await automation.build_automation(
+                        trigger, [(get_c_type(attr[CONF_TYPE]), "x")], conf
+                    )
     for conf in config.get(CONF_ON_JOIN, []):
         trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
         await automation.build_automation(trigger, [], conf)
@@ -310,6 +351,14 @@ async def report_to_code(config, action_id, template_arg, args):
 
 @automation.register_action("zigbee.setAttr", SetAttrAction, ZIGBEE_SET_ATTR_SCHEMA)
 async def zigbee_set_attr_to_code(config, action_id, template_arg, args):
+    attr = find_attr(
+        CORE.config["zigbee"],
+        config[CONF_ENDPOINT],
+        config[CONF_CLUSTER],
+        config[CONF_ROLE],
+        config[CONF_ATTRIBUTE],
+    )
+    template_arg = cg.TemplateArguments(get_c_type(attr[CONF_TYPE]), template_arg.args)
     parent = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, parent)
     cg.add(
@@ -320,7 +369,9 @@ async def zigbee_set_attr_to_code(config, action_id, template_arg, args):
             config[CONF_ATTRIBUTE],
         )
     )
-    template_ = await cg.templatable(config[CONF_VALUE], args, cg.int64)
+    template_ = await cg.templatable(
+        config[CONF_VALUE], args, get_c_type(attr[CONF_TYPE])
+    )
     cg.add(var.set_value(template_))
 
     return var
