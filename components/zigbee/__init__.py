@@ -15,9 +15,10 @@ import esphome.config_validation as cv
 from esphome.const import (
     CONF_AP,
     CONF_AREA,
-    CONF_ATTRIBUTE,
     CONF_DATE,
+    CONF_DEVICE,
     CONF_ID,
+    CONF_LAMBDA,
     CONF_NAME,
     CONF_ON_VALUE,
     CONF_POWER_SUPPLY,
@@ -47,9 +48,12 @@ CONF_ENDPOINT = "endpoint"
 CONF_CLUSTER = "cluster"
 CONF_REPORT = "report"
 CONF_ACCESS = "access"
+CONF_SCALE = "scale"
+CONF_ATTRIBUTE_ID = "attribute_id"
 
 zigbee_ns = cg.esphome_ns.namespace("zigbee")
 ZigBeeComponent = zigbee_ns.class_("ZigBeeComponent", cg.Component)
+ZigBeeAttribute = zigbee_ns.class_("ZigBeeAttribute", cg.Component)
 ZigBeeJoinTrigger = zigbee_ns.class_("ZigBeeJoinTrigger", automation.Trigger)
 ZigBeeOnValueTrigger = zigbee_ns.class_(
     "ZigBeeOnValueTrigger", automation.Trigger.template(int), cg.Component
@@ -101,6 +105,10 @@ def get_cv_by_type(attr_type):
     raise cv.Invalid(f"Zigbee: type {attr_type} not supported or implemented")
 
 
+def get_default_by_type(attr_type):
+    return 0
+
+
 def validate_clusters(config):
     for attr in config.get(CONF_ATTRIBUTES):
         if isinstance(config.get(CONF_ID), int) and config.get(CONF_ID) >= 0xFC00:
@@ -112,12 +120,16 @@ def validate_clusters(config):
 
 
 def validate_attributes(config):
-    if CONF_ACCESS in config and (CONF_TYPE not in config or CONF_VALUE not in config):
-        raise cv.Invalid(
-            f"If parameter {CONF_ACCESS} is set parameters {CONF_TYPE} and {CONF_VALUE} are requiered."
-        )
-    if CONF_TYPE in config and CONF_VALUE in config:
+    if CONF_VALUE in config:
         config[CONF_VALUE] = get_cv_by_type(config[CONF_TYPE])(config[CONF_VALUE])
+    else:
+        config[CONF_VALUE] = get_default_by_type(config[CONF_TYPE])
+    config[CONF_ACCESS] = (
+        ATTR_ACCESS[config[CONF_ACCESS]] + config[CONF_REPORT] * 4
+        if CONF_ACCESS in config
+        else 0
+    )
+
     return config
 
 
@@ -177,8 +189,11 @@ CONFIG_SCHEMA = cv.All(
                                     cv.Optional(CONF_ATTRIBUTES): cv.ensure_list(
                                         cv.Schema(
                                             {
-                                                cv.Required(CONF_ID): cv.int_,
-                                                cv.Optional(CONF_TYPE): cv.enum(
+                                                cv.GenerateID(): cv.declare_id(
+                                                    ZigBeeAttribute
+                                                ),
+                                                cv.Required(CONF_ATTRIBUTE_ID): cv.int_,
+                                                cv.Required(CONF_TYPE): cv.enum(
                                                     ATTR_TYPE, upper=True
                                                 ),
                                                 cv.Optional(CONF_ACCESS): cv.enum(
@@ -199,6 +214,15 @@ CONFIG_SCHEMA = cv.All(
                                                         ),
                                                     }
                                                 ),
+                                                cv.Optional(CONF_DEVICE): cv.use_id(
+                                                    cg.EntityBase
+                                                ),
+                                                cv.Optional(
+                                                    CONF_SCALE, default=1.0
+                                                ): cv.float_,
+                                                cv.Optional(
+                                                    CONF_LAMBDA
+                                                ): cv.returning_lambda,
                                             }
                                         ),
                                         validate_attributes,
@@ -227,18 +251,13 @@ CONFIG_SCHEMA = cv.All(
 )
 
 
-# pylint: disable=too-many-nested-blocks
-def find_attr(conf, endpoint, cluster, role, attribute):
+def find_attr(conf, id):
     for ep in conf[CONF_ENDPOINTS]:
-        if ep[CONF_NUM] == endpoint:
-            for cl in ep[CONF_CLUSTERS]:
-                if cl[CONF_ID] == cluster:
-                    for attr in cl[CONF_ATTRIBUTES]:
-                        if attr[CONF_ID] == attribute:
-                            return attr
-    raise EsphomeError(
-        f"Zigbee: Cannot find attribute {attribute} in cluster {cluster} in endpoint {endpoint}."
-    )
+        for cl in ep[CONF_CLUSTERS]:
+            for attr in cl[CONF_ATTRIBUTES]:
+                if attr[CONF_ID] == id:
+                    return attr
+    raise EsphomeError(f"Zigbee: Cannot find attribute {id}.")
 
 
 async def to_code(config):
@@ -308,48 +327,54 @@ async def to_code(config):
                 )
             )
             for attr in cl[CONF_ATTRIBUTES]:
-                if CONF_VALUE in attr:
-                    access = (
-                        ATTR_ACCESS[attr[CONF_ACCESS]] + attr[CONF_REPORT] * 4
-                        if CONF_ACCESS in attr
-                        else 0
+                attr_var = cg.new_Pvariable(
+                    attr[CONF_ID],
+                    var,
+                    ep[CONF_NUM],
+                    cl[CONF_ID],
+                    cl[CONF_ROLE],
+                    attr[CONF_ATTRIBUTE_ID],
+                    attr[CONF_TYPE],
+                    attr[CONF_SCALE],
+                )
+                await cg.register_component(attr_var, attr)
+
+                cg.add(
+                    attr_var.add_attr(
+                        attr[CONF_ACCESS],
+                        attr[CONF_VALUE],
                     )
-                    cg.add(
-                        var.add_attr(
-                            ep[CONF_NUM],
-                            cl[CONF_ID],
-                            cl[CONF_ROLE],
-                            attr[CONF_ID],
-                            attr.get(CONF_TYPE, 0),
-                            access,
-                            attr[CONF_VALUE],
-                        )
-                    )
+                )
                 if attr[CONF_REPORT]:
-                    cg.add(
-                        var.set_report(
-                            ep[CONF_NUM],
-                            cl[CONF_ID],
-                            cl[CONF_ROLE],
-                            attr[CONF_ID],
-                        )
+                    cg.add(attr_var.set_report())
+
+                if CONF_LAMBDA in attr:
+                    lambda_ = await cg.process_lambda(
+                        attr[CONF_LAMBDA],
+                        [(cg.float_, "x")],
+                        return_type=get_c_type(attr[CONF_TYPE]),
                     )
+
+                if CONF_DEVICE in attr:
+                    device = await cg.get_variable(attr[CONF_DEVICE])
+                    template_arg = cg.TemplateArguments(get_c_type(attr[CONF_TYPE]))
+                    if CONF_LAMBDA in attr:
+                        lambda_ = await cg.process_lambda(
+                            attr[CONF_LAMBDA],
+                            [(cg.float_, "x")],
+                            return_type=get_c_type(attr[CONF_TYPE]),
+                        )
+                        cg.add(attr_var.connect(template_arg, device, lambda_))
+                    else:
+                        cg.add(attr_var.connect(template_arg, device))
 
                 for conf in attr.get(CONF_ON_VALUE, []):
                     trigger = cg.new_Pvariable(
                         conf[CONF_TRIGGER_ID],
                         cg.TemplateArguments(get_c_type(attr[CONF_TYPE])),
-                        var,
+                        attr_var,
                     )
                     await cg.register_component(trigger, conf)
-                    cg.add(
-                        trigger.set_attr(
-                            ep[CONF_NUM],
-                            cl[CONF_ID],
-                            attr[CONF_ID],
-                            attr[CONF_TYPE],
-                        )
-                    )
                     await automation.build_automation(
                         trigger, [(get_c_type(attr[CONF_TYPE]), "x")], conf
                     )
@@ -362,24 +387,6 @@ ZIGBEE_ACTION_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.use_id(ZigBeeComponent),
     }
-)
-
-ZIGBEE_SET_ATTR_SCHEMA = cv.All(
-    automation.maybe_simple_id(
-        ZIGBEE_ACTION_SCHEMA.extend(
-            cv.Schema(
-                {
-                    cv.Required(CONF_ENDPOINT): cv.int_range(1, 240),
-                    cv.Required(CONF_CLUSTER): cv.enum(CLUSTER_ID, upper=True),
-                    cv.Optional(CONF_ROLE, default="Server"): cv.enum(
-                        CLUSTER_ROLE, upper=True
-                    ),
-                    cv.Required(CONF_ATTRIBUTE): cv.int_,
-                    cv.Required(CONF_VALUE): cv.templatable(cv.valid),
-                }
-            )
-        )
-    ),
 )
 
 
@@ -401,26 +408,34 @@ async def report_to_code(config, action_id, template_arg, args):
     return var
 
 
+ZIGBEE_ATTRIBUTE_ACTION_SCHEMA = cv.Schema(
+    {
+        cv.GenerateID(): cv.use_id(ZigBeeAttribute),
+    }
+)
+
+ZIGBEE_SET_ATTR_SCHEMA = cv.All(
+    automation.maybe_simple_id(
+        ZIGBEE_ATTRIBUTE_ACTION_SCHEMA.extend(
+            cv.Schema(
+                {
+                    cv.Required(CONF_VALUE): cv.templatable(cv.valid),
+                }
+            )
+        )
+    ),
+)
+
+
 @automation.register_action("zigbee.setAttr", SetAttrAction, ZIGBEE_SET_ATTR_SCHEMA)
 async def zigbee_set_attr_to_code(config, action_id, template_arg, args):
     attr = find_attr(
         CORE.config["zigbee"],
-        config[CONF_ENDPOINT],
-        config[CONF_CLUSTER],
-        config[CONF_ROLE],
-        config[CONF_ATTRIBUTE],
+        config[CONF_ID],
     )
     template_arg = cg.TemplateArguments(get_c_type(attr[CONF_TYPE]), template_arg.args)
     parent = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, parent)
-    cg.add(
-        var.set_target(
-            config[CONF_ENDPOINT],
-            config[CONF_CLUSTER],
-            config[CONF_ROLE],
-            config[CONF_ATTRIBUTE],
-        )
-    )
     template_ = await cg.templatable(
         config[CONF_VALUE], args, get_c_type(attr[CONF_TYPE])
     )

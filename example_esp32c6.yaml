@@ -3,33 +3,30 @@ esphome:
 
 external_components:
   - source: components
-    components: [ zigbee ]
+    components: [zigbee]
 
 esp32:
   board: esp32-c6-devkitc-1
   flash_size: 4MB
   partitions: partitions_zb.csv
   framework:
-    platform_version: 6.6.0
     type: esp-idf
-    version: 5.2.1
     sdkconfig_options:
       CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y
-  variant: esp32c6
 
 # Enable logging
 logger:
   hardware_uart: UART0
 
 globals:
-   - id: color_x
-     type: float
-     restore_value: no
-     initial_value: '0'
-   - id: color_y
-     type: float
-     restore_value: no
-     initial_value: '0'
+  - id: color_x
+    type: float
+    restore_value: no
+    initial_value: '0'
+  - id: color_y
+    type: float
+    restore_value: no
+    initial_value: '0'
 
 sensor:
   - platform: internal_temperature
@@ -37,14 +34,6 @@ sensor:
     id: "temp"
     filters:
       - delta: 0.1
-    on_value:
-      then:
-        - zigbee.setAttr:
-            id: zb
-            endpoint: 2
-            cluster: TEMP_MEASUREMENT
-            attribute: 0x0
-            value: !lambda "return x*100;"
 
 zigbee:
   id: "zb"
@@ -54,7 +43,7 @@ zigbee:
       clusters:
         - id: ON_OFF
           attributes:
-            - id: 0
+            - attribute_id: 0
               type: bool
               on_value:
                 then:
@@ -63,7 +52,7 @@ zigbee:
                       state: !lambda "return (bool)x;"
         - id: LEVEL_CONTROL
           attributes:
-            - id: 0
+            - attribute_id: 0
               type: U8
               on_value:
                 then:
@@ -72,7 +61,7 @@ zigbee:
                       brightness: !lambda "return ((float)x)/255;"
         - id: COLOR_CONTROL
           attributes:
-            - id: 3
+            - attribute_id: 3
               type: U16
               on_value:
                 then:
@@ -82,7 +71,7 @@ zigbee:
                       red: !lambda "return zigbee::get_r_from_xy(id(color_x), id(color_y));"
                       green: !lambda "return zigbee::get_g_from_xy(id(color_x), id(color_y));"
                       blue: !lambda "return zigbee::get_b_from_xy(id(color_x), id(color_y));"
-            - id: 4
+            - attribute_id: 4
               type: U16
               on_value:
                 then:
@@ -95,18 +84,14 @@ zigbee:
     - device_type: TEMPERATURE_SENSOR
       num: 2
       clusters:
-        - id: REL_HUMIDITY_MEASUREMENT
-          attributes:
-            - id: 0
-              type: U16
-              report: true
-              value: 200
         - id: TEMP_MEASUREMENT
           attributes:
-            - id: 0x0
+            - attribute_id: 0x0
               type: S16
               report: true
               value: 100
+              device: temp
+              scale: 100
   on_join:
     then:
       - logger.log: "Joined network"

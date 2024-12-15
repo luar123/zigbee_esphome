@@ -1,4 +1,7 @@
 > [!Important]
+> **Some parameters changed. Check description below or examples.**
+
+> [!Important]
 > **If you get build errors try to delete the `.esphome/build/<name>/` folder first.**
 > **If the esp crashes try to delete completely with `esptool.py erase_flash` and flash again.**
 
@@ -22,10 +25,11 @@ External ZigBee component for ESPHome.
 
 ### Limitations
 * Only end devices
-* Attribute set action and OnValue trigger works only with integer types
+* Attribute set action and OnValue trigger works only with numeric types
 * Reporting can be enabled, but not configured
 * No control devices like switches
 * Needs esp-idf >=5.1.4
+* Needs esphome 2024.12
 
 ### ToDo List (Short-Mid term)
 * Custom clusters/attributes (done)
@@ -33,7 +37,7 @@ External ZigBee component for ESPHome.
 * Time component
 * Light effects (through identify cluster commands)
 * Router devices
-* Easier support for sensors
+* Easier support for sensors (done)
 
 ### Not planed (feel free to submit a PR)
 * Coordinator devices
@@ -43,7 +47,7 @@ External ZigBee component for ESPHome.
 
 ### Notes
 * I don't have much free time to work on this right now, so feel free to fork/improve/create PRs/etc.
-* At the moment, the C++ implementation is rather simple and generic. I tried to keep as much logic as possible in the python part. However, endpoints/clusters/attributes could also be classes, this would simplify the yaml setup but requires more sophisticated C++ code. 
+* At the moment, the C++ implementation is rather simple and generic. I tried to keep as much logic as possible in the python part. However, endpoints/clusters ~~/attributes~~ could also be classes, this would simplify the yaml setup but requires more sophisticated C++ code. 
 * There is also a project with more advanced C++ zigbee libraries for esp32 that could be used here as well: https://github.com/Muk911/esphome/tree/main/esp32c6/hello-zigbee
 * [parse_zigbee_headers.py](components/zigbee/files_to_parse/parse_zigbee_headers.py) is used to create the python enums and C helper functions automatically from zigbee sdk headers.
 * Deprecated [custom zigbee component](https://github.com/luar123/esphome_zb_sensor)
@@ -54,7 +58,7 @@ Include external component:
 ```
 external_components:
   - source: github://luar123/zigbee_esphome
-    components: [ zigbee ]
+    components: [zigbee]
 
 zigbee:
   ...
@@ -72,7 +76,7 @@ zigbee:
       clusters:
         - id: ON_OFF
           attributes:
-            - id: 0
+            - attribute_id: 0
               type: bool
               on_value:
                 then:
@@ -81,7 +85,7 @@ zigbee:
                       state: !lambda "return (bool)x;"
         - id: LEVEL_CONTROL
           attributes:
-            - id: 0
+            - attribute_id: 0
               type: U8
               on_value:
                 then:
@@ -93,16 +97,19 @@ zigbee:
       clusters:
         - id: REL_HUMIDITY_MEASUREMENT
           attributes:
-            - id: 0
+            - attribute_id: 0
+              id: hum_attr
               type: U16
               report: true
               value: 200
         - id: TEMP_MEASUREMENT
           attributes:
-            - id: 0x0
+            - attribute_id: 0x0
               type: S16
               report: true
               value: 100
+              device: temp_sensor_id
+              scale: 100
   on_join:
     then:
       - logger.log: "Joined network"
@@ -110,12 +117,9 @@ zigbee:
 
 ### Actions
 * zigbee.setAttr
-  * id: "id of zigbee component"
-  * endpoint: "endpoint number"
-  * cluster: "cluster id"
-  * attribute: "attribute id"
+  * id: "id of attribute"
   * value: "value, can be a lambda"
-    * only integer types
+    * only numeric types
 * zigbee.report: "id of zigbee component"
   * Manually send reports
 * zigbee.reset: "id of zigbee component"
@@ -126,10 +130,7 @@ Examples:
     on_value:
       then:
         - zigbee.setAttr:
-            id: zb
-            endpoint: 2
-            cluster: REL_HUMIDITY_MEASUREMENT
-            attribute: 0x0
+            id: hum_attr
             value: !lambda "return x*100;"
 ```
 ```

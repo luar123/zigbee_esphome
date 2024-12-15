@@ -3,6 +3,7 @@
 #include "esp_check.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include "zigbee_attribute.h"
 #include "zigbee.h"
 #include "esphome/core/log.h"
 #include "zigbee_helpers.h"
@@ -17,8 +18,6 @@
 namespace esphome {
 namespace zigbee {
 
-// uint8_t HA_ESP_LIGHT_ENDPOINT;
-bool connected_ = false;
 ZigBeeComponent *zigbeeC;
 
 device_params_t coord;
@@ -36,20 +35,6 @@ static void bdb_start_top_level_commissioning_cb(uint8_t mode_mask) {
   if (esp_zb_bdb_start_top_level_commissioning(mode_mask) != ESP_OK) {
     ESP_LOGE(TAG, "Start network steering failed!");
   }
-}
-
-void ZigBeeComponent::set_attr(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
-                               void *value_p) {
-  esp_zb_lock_acquire(portMAX_DELAY);
-  esp_zb_zcl_status_t state = esp_zb_zcl_set_attribute_val(endpoint_id, cluster_id, role, attr_id, value_p, false);
-
-  // Check for error
-  if (state != ESP_ZB_ZCL_STATUS_SUCCESS) {
-    ESP_LOGE(TAG, "Setting attribute failed!");
-    return;
-  }
-  ESP_LOGD(TAG, "Attribute set!");
-  esp_zb_lock_release();
 }
 
 void ZigBeeComponent::set_report(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id) {
@@ -152,7 +137,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
                  extended_pan_id[2], extended_pan_id[1], extended_pan_id[0], esp_zb_get_pan_id(),
                  esp_zb_get_current_channel());
         zigbeeC->on_join_callback_.call();
-        connected_ = true;
+        zigbeeC->connected = true;
 
         memcpy(&(coord.ieee_addr), extended_pan_id, sizeof(esp_zb_ieee_addr_t));
         coord.endpoint = 1;
@@ -208,7 +193,7 @@ static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t 
                       "Received message: error status(%d)", message->info.status);
   ESP_LOGI(TAG, "Received message: endpoint(%d), cluster(0x%x), attribute(0x%x), data size(%d)",
            message->info.dst_endpoint, message->info.cluster, message->attribute.id, message->attribute.data.size);
-  zigbeeC->on_value_callback_.call(message->info, message->attribute);
+  zigbeeC->handle_attribute(message->info, message->attribute);
   return ret;
 }
 
@@ -226,6 +211,14 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
       break;
   }
   return ret;
+}
+
+void ZigBeeComponent::handle_attribute(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute) {
+  if (this->attributes_.find({info.dst_endpoint, info.cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, attribute.id}) !=
+      this->attributes_.end()) {
+    this->attributes_[{info.dst_endpoint, info.cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, attribute.id}]->on_value(
+        attribute);
+  }
 }
 
 void ZigBeeComponent::create_default_cluster(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id) {
@@ -385,7 +378,7 @@ void ZigBeeComponent::esp_zb_task_() {
     this->mark_failed();
     vTaskDelete(NULL);
   }
-
+  this->started_ = true;
   esp_zb_stack_main_loop();
 }
 

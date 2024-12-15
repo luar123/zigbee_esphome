@@ -4,6 +4,7 @@
 
 #include "esphome/core/component.h"
 #include "esphome/core/automation.h"
+#include "zigbee_attribute.h"
 #include "zigbee.h"
 
 namespace esphome {
@@ -28,59 +29,32 @@ template<typename... Ts> class ReportAction : public Action<Ts...>, public Paren
 
 template<typename T, typename... Ts> class SetAttrAction : public Action<Ts...> {
  public:
-  SetAttrAction(ZigBeeComponent *parent) : parent_(parent) {}
+  SetAttrAction(ZigBeeAttribute *parent) : parent_(parent) {}
   TEMPLATABLE_VALUE(T, value);
-
-  void set_target(uint8_t ep, uint16_t cluster, uint8_t role, uint16_t attr) {
-    this->ep_ = ep;
-    this->cluster_ = cluster;
-    this->role_ = role;
-    this->attr_ = attr;
-  }
 
   void play(Ts... x) override {
     T value = this->value_.value(x...);
-    this->parent_->set_attr(this->ep_, this->cluster_, this->role_, this->attr_, &value);
+    this->parent_->set_attr(&value);
   }
 
  protected:
-  ZigBeeComponent *parent_;
-  uint8_t ep_;
-  uint16_t cluster_;
-  uint8_t role_;
-  uint16_t attr_;
+  ZigBeeAttribute *parent_;
 };
 
 template<typename Ts> class ZigBeeOnValueTrigger : public Trigger<Ts>, public Component {
  public:
-  explicit ZigBeeOnValueTrigger(ZigBeeComponent *parent) : parent_(parent) {}
-  void set_attr(uint8_t endpoint_id, uint16_t cluster_id, uint16_t attr_id, uint8_t attr_type) {
-    this->ep_id_ = endpoint_id;
-    this->cl_id_ = cluster_id;
-    this->attr_id_ = attr_id;
-    this->attr_type_ = attr_type;
-  }
+  explicit ZigBeeOnValueTrigger(ZigBeeAttribute *parent) : parent_(parent) {}
   void setup() override {
-    this->parent_->add_on_value_callback([this](esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute) {
-      this->on_value_(info, attribute);
-    });
+    this->parent_->add_on_value_callback([this](esp_zb_zcl_attribute_t attribute) { this->on_value_(attribute); });
   }
 
  protected:
-  void on_value_(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute) {
-    if (info.dst_endpoint == this->ep_id_) {
-      if (info.cluster == this->cl_id_) {
-        if (attribute.id == this->attr_id_ && attribute.data.type == attr_type_ && attribute.data.value) {
-          this->trigger(get_value_by_type<Ts>(attr_type_, attribute.data.value));
-        }
-      }
+  void on_value_(esp_zb_zcl_attribute_t attribute) {
+    if (attribute.data.type == parent_->attr_type() && attribute.data.value) {
+      this->trigger(get_value_by_type<Ts>(parent_->attr_type(), attribute.data.value));
     }
   }
-  ZigBeeComponent *parent_;
-  uint8_t ep_id_;
-  uint16_t cl_id_;
-  uint16_t attr_id_;
-  uint8_t attr_type_;
+  ZigBeeAttribute *parent_;
 };
 
 template<class T> T get_value_by_type(uint8_t attr_type, void *data) {
