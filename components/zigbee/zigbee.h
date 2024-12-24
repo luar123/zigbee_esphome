@@ -27,6 +27,12 @@ using zdo_info_user_ctx_t = struct ZdoInfoCtxS {
   uint16_t short_addr;
 };
 
+using zb_device_params_t = struct zb_device_params_s {
+  esp_zb_ieee_addr_t ieee_addr;
+  uint8_t endpoint;
+  uint16_t short_addr;
+};
+
 /* Zigbee configuration */
 #define INSTALLCODE_POLICY_ENABLE false /* enable the install code policy for security */
 #define ED_AGING_TIMEOUT ESP_ZB_ED_AGING_TIMEOUT_64MIN
@@ -62,6 +68,8 @@ class ZigBeeComponent : public Component {
 
   void set_report(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id);
   void handle_attribute(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute);
+  void searchBindings();
+  static void bindingTableCb(const esp_zb_zdo_binding_table_info_t *table_info, void *user_ctx);
 
   void reset() {
     esp_zb_lock_acquire(portMAX_DELAY);
@@ -74,12 +82,12 @@ class ZigBeeComponent : public Component {
 
   bool is_started() { return this->started_; }
   bool connected = false;
+  bool started_ = false;
 
   CallbackManager<void()> on_join_callback_{};
   std::deque<esp_zb_zcl_reporting_info_t> reporting_list;
 
  protected:
-  void esp_zb_task_();
   esp_zb_attribute_list_t *create_ident_cluster_();
   esp_zb_attribute_list_t *create_basic_cluster_();
   std::map<uint8_t, esp_zb_ha_standard_devices_t> endpoint_list_;
@@ -100,7 +108,6 @@ class ZigBeeComponent : public Component {
     uint8_t physical_env;
   } basic_cluster_data_;
   uint8_t ident_time_;
-  bool started_ = false;
 };
 
 extern "C" void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct);

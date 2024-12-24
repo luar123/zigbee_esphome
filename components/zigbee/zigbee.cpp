@@ -48,8 +48,8 @@ void ZigBeeComponent::set_report(uint8_t endpoint_id, uint16_t cluster_id, uint8
       .manuf_code = ESP_ZB_ZCL_ATTR_NON_MANUFACTURER_SPECIFIC,
   };
 
-  reporting_info.dst.short_addr = 0;
-  reporting_info.dst.endpoint = 1;
+  // reporting_info.dst.short_addr = 0;
+  // reporting_info.dst.endpoint = 1;
   reporting_info.dst.profile_id = ESP_ZB_AF_HA_PROFILE_ID;
   reporting_info.u.send_info.min_interval = 10;     /*!< Actual minimum reporting interval */
   reporting_info.u.send_info.max_interval = 0;      /*!< Actual maximum reporting interval */
@@ -63,6 +63,7 @@ void ZigBeeComponent::set_report(uint8_t endpoint_id, uint16_t cluster_id, uint8
 void ZigBeeComponent::report() {
   esp_zb_zcl_report_attr_cmd_t cmd = {
       .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
+      //.direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
   };
   cmd.zcl_basic_cmd.dst_addr_u.addr_short = 0x0000;
   cmd.zcl_basic_cmd.dst_endpoint = 1;
@@ -91,34 +92,27 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
     case ESP_ZB_ZDO_SIGNAL_SKIP_STARTUP:
       // Notifies the application that ZBOSS framework (scheduler, buffer pool, etc.) has started, but no
       // join/rejoin/formation/BDB initialization has been done yet.
-      ESP_LOGI(TAG, "SKIP_STARTUP. Device started up in %sfactory-reset mode",
-               esp_zb_bdb_is_factory_new() ? "" : "non ");
-      ESP_LOGI(TAG, "Initialize Zigbee stack");
+      ESP_LOGI(TAG, "Zigbee stack initialized");
       esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_INITIALIZATION);
       break;
     case ESP_ZB_BDB_SIGNAL_DEVICE_FIRST_START:
       // Device started for the first time after the NVRAM erase
+    case ESP_ZB_BDB_SIGNAL_DEVICE_REBOOT:
+      // Device started using the NVRAM contents.
       if (err_status == ESP_OK) {
-        ESP_LOGI(TAG, "FIRST_START. Device started up in %sfactory-reset mode",
-                 esp_zb_bdb_is_factory_new() ? "" : "non ");
+        ESP_LOGI(TAG, "Device started up in %sfactory-reset mode", esp_zb_bdb_is_factory_new() ? "" : "non ");
+        zigbeeC->started_ = true;
         if (esp_zb_bdb_is_factory_new()) {
           ESP_LOGI(TAG, "Start network steering");
           esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
+        } else {
+          ESP_LOGI(TAG, "Device rebooted");
+          zigbeeC->connected = true;
+          zigbeeC->searchBindings();
         }
       } else {
         ESP_LOGE(TAG, "FIRST_START.  Device started up in %sfactory-reset mode with an error %d (%s)",
                  esp_zb_bdb_is_factory_new() ? "" : "non ", err_status, esp_err_to_name(err_status));
-      }
-      break;
-    case ESP_ZB_BDB_SIGNAL_DEVICE_REBOOT:
-      // Device started using the NVRAM contents.
-      if (err_status == ESP_OK) {
-        ESP_LOGI(TAG, "Start network steering after reboot");
-        esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
-      } else {
-        ESP_LOGE(TAG, "FIRST_START.  Device started up in %sfactory-reset mode with an error %d (%s)",
-                 esp_zb_bdb_is_factory_new() ? "" : "non ", err_status, esp_err_to_name(err_status));
-        /* commissioning failed */
         ESP_LOGW(TAG, "Failed to initialize Zigbee stack (status: %s)", esp_err_to_name(err_status));
         esp_zb_scheduler_alarm((esp_zb_callback_t) bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_INITIALIZATION,
                                1000);
@@ -138,11 +132,11 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
                  esp_zb_get_current_channel());
         zigbeeC->on_join_callback_.call();
         zigbeeC->connected = true;
-
+        /**
         memcpy(&(coord.ieee_addr), extended_pan_id, sizeof(esp_zb_ieee_addr_t));
         coord.endpoint = 1;
         coord.short_addr = 0;
-        /* bind the reporting clusters to ep */
+        /* bind the reporting clusters to ep
         esp_zb_zdo_bind_req_param_t bind_req;
         memcpy(&(bind_req.dst_address_u.addr_long), coord.ieee_addr, sizeof(esp_zb_ieee_addr_t));
         bind_req.dst_endp = coord.endpoint;
@@ -155,8 +149,8 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
           bind_req.cluster_id = reporting_info.cluster_id;
           bind_req.src_endp = reporting_info.ep;
           test_info_ctx.endpoint = reporting_info.ep;
-          esp_zb_zdo_device_bind_req(&bind_req, bind_cb, (void *) &(test_info_ctx));
-        }
+          //esp_zb_zdo_device_bind_req(&bind_req, bind_cb, (void *) &(test_info_ctx));
+        } **/
       } else {
         ESP_LOGI(TAG, "Network steering was not successful (status: %s)", esp_err_to_name(err_status));
         if (steering_retry_count < 10) {
@@ -183,6 +177,69 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
                esp_err_to_name(err_status));
       break;
   }
+}
+
+// Recall bounded devices from the binding table after reboot
+void ZigBeeComponent::bindingTableCb(const esp_zb_zdo_binding_table_info_t *table_info, void *user_ctx) {
+  bool done = true;
+  esp_zb_zdo_mgmt_bind_param_t *req = (esp_zb_zdo_mgmt_bind_param_t *) user_ctx;
+  esp_zb_zdp_status_t zdo_status = (esp_zb_zdp_status_t) table_info->status;
+  ESP_LOGD(TAG, "Binding table callback for address 0x%04x with status %d", req->dst_addr, zdo_status);
+  if (zdo_status == ESP_ZB_ZDP_STATUS_SUCCESS) {
+    // Print binding table log simple
+    ESP_LOGD(TAG, "Binding table info: total %d, index %d, count %d", table_info->total, table_info->index,
+             table_info->count);
+
+    if (table_info->total == 0) {
+      ESP_LOGD(TAG, "No binding table entries found");
+      free(req);
+      return;
+    }
+
+    esp_zb_zdo_binding_table_record_t *record = table_info->record;
+    for (int i = 0; i < table_info->count; i++) {
+      ESP_LOGD(TAG, "Binding table record: src_endp %d, dst_endp %d, cluster_id 0x%04x, dst_addr_mode %d",
+               record->src_endp, record->dst_endp, record->cluster_id, record->dst_addr_mode);
+
+      zb_device_params_t *device = (zb_device_params_t *) calloc(1, sizeof(zb_device_params_t));
+      device->endpoint = record->dst_endp;
+      if (record->dst_addr_mode == ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT ||
+          record->dst_addr_mode == ESP_ZB_APS_ADDR_MODE_16_GROUP_ENDP_NOT_PRESENT) {
+        device->short_addr = record->dst_address.addr_short;
+      } else {  // ESP_ZB_APS_ADDR_MODE_64_ENDP_PRESENT
+        memcpy(device->ieee_addr, record->dst_address.addr_long, sizeof(esp_zb_ieee_addr_t));
+      }
+      ESP_LOGD(TAG,
+               "Device bound to EP %d -> device endpoint: %d, short addr: 0x%04x, ieee addr: "
+               "%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X",
+               record->src_endp, device->endpoint, device->short_addr, device->ieee_addr[7], device->ieee_addr[6],
+               device->ieee_addr[5], device->ieee_addr[4], device->ieee_addr[3], device->ieee_addr[2],
+               device->ieee_addr[1], device->ieee_addr[0]);
+      record = record->next;
+    }
+
+    // Continue reading the binding table
+    if (table_info->index + table_info->count < table_info->total) {
+      /* There are unreported binding table entries, request for them. */
+      req->start_index = table_info->index + table_info->count;
+      esp_zb_zdo_binding_table_req(req, bindingTableCb, req);
+      done = false;
+    }
+  }
+
+  if (done) {
+    // Print bound devices
+    ESP_LOGD(TAG, "Filling bounded devices finished");
+    free(req);
+  }
+}
+
+void ZigBeeComponent::searchBindings() {
+  esp_zb_zdo_mgmt_bind_param_t *mb_req = (esp_zb_zdo_mgmt_bind_param_t *) malloc(sizeof(esp_zb_zdo_mgmt_bind_param_t));
+  mb_req->dst_addr = esp_zb_get_short_address();
+  mb_req->start_index = 0;
+  ESP_LOGD(TAG, "Requesting binding table for address 0x%04x", mb_req->dst_addr);
+  esp_zb_zdo_binding_table_req(mb_req, bindingTableCb, (void *) mb_req);
 }
 
 static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
@@ -311,7 +368,34 @@ esp_err_t ZigBeeComponent::create_endpoint(uint8_t endpoint_id, esp_zb_ha_standa
   return esp_zb_ep_list_add_ep(this->esp_zb_ep_list_, esp_zb_cluster_list, endpoint_config);
 }
 
-void ZigBeeComponent::esp_zb_task_() {
+static void esp_zb_task_(void *pvParameters) {
+  if (esp_zb_start(false) != ESP_OK) {
+    ESP_LOGE(TAG, "Could not setup Zigbee");
+    // this->mark_failed();
+    vTaskDelete(NULL);
+  }
+
+  esp_zb_stack_main_loop();
+}
+
+void ZigBeeComponent::setup() {
+  zigbeeC = this;
+  esp_zb_platform_config_t config = {
+      .radio_config = ESP_ZB_DEFAULT_RADIO_CONFIG(),
+      .host_config = ESP_ZB_DEFAULT_HOST_CONFIG(),
+  };
+#ifdef CONFIG_WIFI_COEX
+  if (esp_coex_wifi_i154_enable() != ESP_OK) {
+    this->mark_failed();
+    return;
+  }
+#endif
+  // ESP_ERROR_CHECK(nvs_flash_init()); not needed, called by esp32 component
+  if (esp_zb_platform_config(&config) != ESP_OK) {
+    this->mark_failed();
+    return;
+  }
+
   /* initialize Zigbee stack */
   esp_zb_zed_cfg_t zb_zed_cfg = {
       .ed_timeout = ED_AGING_TIMEOUT,
@@ -323,6 +407,7 @@ void ZigBeeComponent::esp_zb_task_() {
   };
   zb_nwk_cfg.nwk_cfg.zed_cfg = zb_zed_cfg;
   esp_zb_init(&zb_nwk_cfg);
+
   esp_err_t ret;
 
   // clusters
@@ -347,9 +432,16 @@ void ZigBeeComponent::esp_zb_task_() {
   if (esp_zb_device_register(this->esp_zb_ep_list_) != ESP_OK) {
     ESP_LOGE(TAG, "Could not register the endpoint list");
     this->mark_failed();
-    vTaskDelete(NULL);
+    return;
   }
+
   esp_zb_core_action_handler_register(zb_action_handler);
+
+  if (esp_zb_set_primary_network_channel_set(ESP_ZB_PRIMARY_CHANNEL_MASK) != ESP_OK) {
+    ESP_LOGE(TAG, "Could not setup Zigbee");
+    this->mark_failed();
+    return;
+  }
 
   // reporting
   for (auto reporting_info : this->reporting_list) {
@@ -368,39 +460,7 @@ void ZigBeeComponent::esp_zb_task_() {
     // ESP_ERROR_CHECK(esp_zb_zcl_start_attr_reporting(attr_info));  // is this needed?
   }
 
-  if (esp_zb_set_primary_network_channel_set(ESP_ZB_PRIMARY_CHANNEL_MASK) != ESP_OK) {
-    ESP_LOGE(TAG, "Could not setup Zigbee");
-    this->mark_failed();
-    vTaskDelete(NULL);
-  }
-  if (esp_zb_start(false) != ESP_OK) {
-    ESP_LOGE(TAG, "Could not setup Zigbee");
-    this->mark_failed();
-    vTaskDelete(NULL);
-  }
-  this->started_ = true;
-  esp_zb_stack_main_loop();
-}
-
-void ZigBeeComponent::setup() {
-  zigbeeC = this;
-  esp_zb_platform_config_t config = {
-      .radio_config = ESP_ZB_DEFAULT_RADIO_CONFIG(),
-      .host_config = ESP_ZB_DEFAULT_HOST_CONFIG(),
-  };
-#ifdef CONFIG_WIFI_COEX
-  if (esp_coex_wifi_i154_enable() != ESP_OK) {
-    this->mark_failed();
-    return;
-  }
-#endif
-  // ESP_ERROR_CHECK(nvs_flash_init()); not needed, called by esp32 component
-  if (esp_zb_platform_config(&config) != ESP_OK) {
-    this->mark_failed();
-    return;
-  }
-  xTaskCreate([](void *arg) { static_cast<ZigBeeComponent *>(arg)->esp_zb_task_(); }, "Zigbee_main", 4096, this, 24,
-              NULL);
+  xTaskCreate(esp_zb_task_, "Zigbee_main", 4096, NULL, 24, NULL);
 }
 
 void ZigBeeComponent::dump_config() {
