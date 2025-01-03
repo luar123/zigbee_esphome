@@ -136,7 +136,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
         memcpy(&(coord.ieee_addr), extended_pan_id, sizeof(esp_zb_ieee_addr_t));
         coord.endpoint = 1;
         coord.short_addr = 0;
-        /* bind the reporting clusters to ep
+        bind the reporting clusters to ep
         esp_zb_zdo_bind_req_param_t bind_req;
         memcpy(&(bind_req.dst_address_u.addr_long), coord.ieee_addr, sizeof(esp_zb_ieee_addr_t));
         bind_req.dst_endp = coord.endpoint;
