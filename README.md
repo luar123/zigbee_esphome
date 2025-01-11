@@ -21,7 +21,7 @@ External ZigBee component for ESPHome.
 * Attribute received trigger
 * Wifi co-existence on ESP32-C6
 * Deep-sleep should work
-* Not tested: groups/scenes
+* Not tested: groups
 
 ### Limitations
 * Only end devices
@@ -30,10 +30,11 @@ External ZigBee component for ESPHome.
 * No control devices like switches
 * Needs esp-idf >=5.1.4
 * Needs esphome 2024.12
+* scenes not implemented
 
 ### ToDo List (Short-Mid term)
 * Custom clusters/attributes (done)
-* Switch to esp-zigbee-sdk 1.5 (done)
+* Switch to esp-zigbee-sdk 1.6 (done)
 * Time component
 * Light effects (through identify cluster commands)
 * Router devices

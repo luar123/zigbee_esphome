@@ -63,7 +63,7 @@ void ZigBeeComponent::set_report(uint8_t endpoint_id, uint16_t cluster_id, uint8
 void ZigBeeComponent::report() {
   esp_zb_zcl_report_attr_cmd_t cmd = {
       .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
-      //.direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
+      .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
   };
   cmd.zcl_basic_cmd.dst_addr_u.addr_short = 0x0000;
   cmd.zcl_basic_cmd.dst_endpoint = 1;
@@ -72,7 +72,7 @@ void ZigBeeComponent::report() {
     cmd.zcl_basic_cmd.src_endpoint = reporting_info.ep;
     cmd.clusterID = reporting_info.cluster_id;
     cmd.attributeID = reporting_info.attr_id;
-    cmd.cluster_role = reporting_info.cluster_role;
+    // cmd.cluster_role = reporting_info.cluster_role;
     esp_zb_zcl_report_attr_cmd_req(&cmd);
   }
 }
@@ -132,25 +132,6 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
                  esp_zb_get_current_channel());
         zigbeeC->on_join_callback_.call();
         zigbeeC->connected = true;
-        /**
-        memcpy(&(coord.ieee_addr), extended_pan_id, sizeof(esp_zb_ieee_addr_t));
-        coord.endpoint = 1;
-        coord.short_addr = 0;
-        /* bind the reporting clusters to ep
-        esp_zb_zdo_bind_req_param_t bind_req;
-        memcpy(&(bind_req.dst_address_u.addr_long), coord.ieee_addr, sizeof(esp_zb_ieee_addr_t));
-        bind_req.dst_endp = coord.endpoint;
-        bind_req.dst_addr_mode = ESP_ZB_ZDO_BIND_DST_ADDR_MODE_64_BIT_EXTENDED;
-        esp_zb_get_long_address(bind_req.src_address);
-        bind_req.req_dst_addr = esp_zb_get_short_address();
-        static zdo_info_user_ctx_t test_info_ctx;
-        test_info_ctx.short_addr = coord.short_addr;
-        for (auto reporting_info : zigbeeC->reporting_list) {
-          bind_req.cluster_id = reporting_info.cluster_id;
-          bind_req.src_endp = reporting_info.ep;
-          test_info_ctx.endpoint = reporting_info.ep;
-          //esp_zb_zdo_device_bind_req(&bind_req, bind_cb, (void *) &(test_info_ctx));
-        } **/
       } else {
         ESP_LOGI(TAG, "Network steering was not successful (status: %s)", esp_err_to_name(err_status));
         if (steering_retry_count < 10) {

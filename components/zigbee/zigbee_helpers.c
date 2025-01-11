@@ -64,6 +64,16 @@ esp_zb_cluster_list_t *esphome_zb_default_clusters_create(esp_zb_ha_standard_dev
       cluster_list = esp_zb_thermostat_clusters_create(&config);
       break;
     }
+    case ESP_ZB_HA_WINDOW_COVERING_DEVICE_ID: {
+      esp_zb_window_covering_cfg_t config = ESP_ZB_DEFAULT_WINDOW_COVERING_CONFIG();
+      cluster_list = esp_zb_window_covering_clusters_create(&config);
+      break;
+    }
+    case ESP_ZB_HA_WINDOW_COVERING_CONTROLLER_DEVICE_ID: {
+      esp_zb_window_covering_controller_cfg_t config = ESP_ZB_DEFAULT_WINDOW_COVERING_CONTROLLER_CONFIG();
+      cluster_list = esp_zb_window_covering_controller_clusters_create(&config);
+      break;
+    }
     default:
       // create empty cluster list;
       cluster_list = esp_zb_zcl_cluster_list_create();
@@ -156,6 +166,9 @@ esp_err_t esphome_zb_cluster_list_add_or_update_cluster(uint16_t cluster_id, esp
         break;
       case ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL:
         ret = esp_zb_cluster_list_add_fan_control_cluster(cluster_list, attr_list, role_mask);
+        break;
+      case ESP_ZB_ZCL_CLUSTER_ID_DEHUMIDIFICATION_CONTROL:
+        ret = esp_zb_cluster_list_add_dehumidification_control_cluster(cluster_list, attr_list, role_mask);
         break;
       case ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT_UI_CONFIG:
         ret = esp_zb_cluster_list_add_thermostat_ui_config_cluster(cluster_list, attr_list, role_mask);
@@ -274,6 +287,8 @@ esp_zb_attribute_list_t *esphome_zb_default_attr_list_create(uint16_t cluster_id
       return esp_zb_thermostat_cluster_create(NULL);
     case ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL:
       return esp_zb_fan_control_cluster_create(NULL);
+    case ESP_ZB_ZCL_CLUSTER_ID_DEHUMIDIFICATION_CONTROL:
+      return esp_zb_dehumidification_control_cluster_create(NULL);
     case ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT_UI_CONFIG:
       return esp_zb_thermostat_ui_config_cluster_create(NULL);
     case ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL:
@@ -368,6 +383,8 @@ esp_err_t esphome_zb_cluster_add_attr(uint16_t cluster_id, esp_zb_attribute_list
       return esp_zb_thermostat_cluster_add_attr(attr_list, attr_id, value_p);
     case ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL:
       return esp_zb_fan_control_cluster_add_attr(attr_list, attr_id, value_p);
+    case ESP_ZB_ZCL_CLUSTER_ID_DEHUMIDIFICATION_CONTROL:
+      return esp_zb_dehumidification_control_cluster_add_attr(attr_list, attr_id, value_p);
     case ESP_ZB_ZCL_CLUSTER_ID_THERMOSTAT_UI_CONFIG:
       return esp_zb_thermostat_ui_config_cluster_add_attr(attr_list, attr_id, value_p);
     case ESP_ZB_ZCL_CLUSTER_ID_COLOR_CONTROL:

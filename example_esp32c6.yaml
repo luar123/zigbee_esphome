@@ -7,12 +7,12 @@ external_components:
 
 esp32:
   board: esp32-c6-devkitc-1
-  flash_size: 4MB
+  #flash_size: 4MB
   partitions: partitions_zb.csv
   framework:
     type: esp-idf
-    sdkconfig_options:
-      CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y
+    #sdkconfig_options:
+      #CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y
 
 # Enable logging
 logger:
@@ -54,6 +54,7 @@ zigbee:
           attributes:
             - attribute_id: 0
               type: U8
+              value: 255
               on_value:
                 then:
                   - light.control:
@@ -101,7 +102,7 @@ light:
     rgb_order: GRB
     pin: 8
     num_leds: 1
-    rmt_channel: 0
+    #rmt_channel: 0
     chipset: ws2812
     id: light_1
 

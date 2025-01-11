@@ -7,12 +7,12 @@ external_components:
 
 esp32:
   board: esp32-h2-devkitm-1
-  flash_size: 4MB
+  #flash_size: 4MB
   partitions: partitions_zb.csv
   framework:
     type: esp-idf
-    sdkconfig_options:
-      CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y
+    #sdkconfig_options:
+      #CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y
 
 # Enable logging
 logger:
@@ -66,11 +66,12 @@ zigbee:
                 then:
                   - light.control:
                       id: light_1
-                      state: !lambda "return (bool)x;"
+                      state: !lambda "return x;"
         - id: LEVEL_CONTROL
           attributes:
             - attribute_id: 0
               type: U8
+              value: 255
               on_value:
                 then:
                   - light.control:
@@ -125,12 +126,13 @@ light:
     rgb_order: GRB
     pin: 8
     num_leds: 1
-    rmt_channel: 0
+    #rmt_channel: 0
     id: light_1
-    bit0_high: 100ns  # rmt clk freq seems to be different on H2
-    bit0_low: 300ns
-    bit1_high: 300ns
-    bit1_low: 100ns
+    chipset: ws2812
+    #bit0_high: 100ns  # rmt clk freq seems to be different on H2
+    #bit0_low: 300ns
+    #bit1_high: 300ns
+    #bit1_low: 100ns
 
 binary_sensor:
   - platform: gpio

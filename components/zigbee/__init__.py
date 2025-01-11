@@ -270,13 +270,13 @@ async def to_code(config):
     add_idf_component(
         name="espressif__esp-zboss-lib",
         repo="https://github.com/espressif/esp-zboss-lib.git",
-        ref="c90b7d6c335f520ff4607e233be9f64f35e909c2",
+        ref="354f742fab22cdb12b4ae61a103a7b438c7c975f",
     )
     add_idf_component(
         name="esp-zigbee-lib",
         repo="https://github.com/espressif/esp-zigbee-sdk.git",
         path="components/esp-zigbee-lib",
-        ref="c5be1da5c349103a85928ed02ca924c0f657b314",
+        ref="df56883084e89ebabf8a4985f92a023bd816a1b5",
     )
     add_idf_sdkconfig_option("CONFIG_ZB_ENABLED", True)
     add_idf_sdkconfig_option("CONFIG_ZB_ZED", True)

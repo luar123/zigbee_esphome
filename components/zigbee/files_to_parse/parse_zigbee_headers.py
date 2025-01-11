@@ -28,7 +28,7 @@ def write_profileIDs(enums):
     to_py = f'{enum_name} = cg.esphome_ns.enum("{enum.declname}")\nDEVICE_ID' + " = {\n"
     for e in enum.type.values.enumerators:
         to_py += f'    "{e.name.removeprefix("ESP_ZB_HA_").removesuffix("_DEVICE_ID")}": {enum_name}.{e.name},\n'
-        to_py += f'    {(e.value.value.removesuffix("U"))}: {enum_name}.{e.name},\n'
+        to_py += f'    {(e.value.value.removesuffix("U").upper().replace("X","x"))}: {enum_name}.{e.name},\n'
     to_py += "}\n"
     return to_py
 
@@ -41,7 +41,7 @@ def write_clusterIDs(enums):
     )
     for e in enum.type.values.enumerators:
         to_py += f'    "{e.name.removeprefix("ESP_ZB_ZCL_CLUSTER_ID_")}": {enum_name}.{e.name},\n'
-        to_py += f'    {(e.value.value.removesuffix("U"))}: {enum_name}.{e.name},\n'
+        to_py += f'    {(e.value.value.removesuffix("U").upper().replace("X","x"))}: {enum_name}.{e.name},\n'
     to_py += "}\n"
     return to_py
 
@@ -69,11 +69,19 @@ def write_ZBtypes(enums):
 
 
 with open("zigbee_const.py", "w", encoding="utf-8") as f:
-    f.write("import esphome.codegen as cg\n")
+    f.write("import esphome.codegen as cg\n\n")
     f.write(write_profileIDs(my_enums))
     f.write(write_clusterIDs(my_enums))
     f.write(write_clusterRoles(my_enums))
     f.write(write_ZBtypes(my_enums))
+    f.write(
+        """ATTR_ACCESS = {
+    "READ_ONLY": 1,
+    "WRITE_ONLY": 2,
+    "READ_WRITE": 3,
+}
+"""
+    )
 # [print_enum(e) for e in enums]
 
 replacements_cl = {
@@ -100,7 +108,6 @@ remove_cl = [
     "green_power",
     "keep_alive",
     "pump_config_control",
-    "dehumid_control",
     "ballast_config",
 ]
 
@@ -124,7 +131,7 @@ def write_cluster_list_aou(enums):
         to_py += f"      case {id}:\n"
         to_py += f"        ret = esp_zb_cluster_list_add_{cluster_name}_cluster(cluster_list, attr_list, role_mask);\n"
         to_py += "        break;\n"
-    to_py += "      default:\n        ret = ESP_FAIL;\n    }\n  }\n  return ret;\n}\n\n"
+    to_py += "      default:\n        ret = esp_zb_cluster_list_add_custom_cluster(cluster_list, attr_list, role_mask);\n    }\n  }\n  return ret;\n}\n\n"
     return to_py
 
 
@@ -175,7 +182,6 @@ remove_attra = [
     "green_power",
     "keep_alive",
     "pump_config_control",
-    "dehumid_control",
     "ballast_config",
     "ias_ace",
     "price",
