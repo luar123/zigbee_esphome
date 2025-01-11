@@ -1,0 +1,49 @@
+esphome:
+  name: timesync-demo
+
+external_components:
+  - source: github://rot169/zigbee_esphome@timesync
+    components: [zigbee]
+
+esp32:
+  board: esp32-c6-devkitc-1
+  variant: esp32c6
+  flash_size: 8MB
+  partitions: partitions_zb.csv
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESPTOOLPY_FLASHSIZE_8MB: y
+
+logger:
+
+zigbee:
+  id: "zb"
+  endpoints:
+    # We need at least one endpoint defined
+    - device_type: TEMPERATURE_SENSOR
+      num: 1
+      clusters:
+        - id: TEMP_MEASUREMENT
+          attributes:
+            - attribute_id: 0x0
+              type: S16
+              report: true
+              id: zb_temp
+              value: 0
+  on_join:
+    then:
+      - logger.log: "Joined network"
+
+time:
+  - platform: zigbee
+    device: zb  # this is the 'id' of thee zigbee component above
+    id: the_time
+    timezone: Europe/London
+    on_time_sync:
+      then:
+        - logger.log: "Synchronized system clock"
+    on_time:
+      - seconds: /10
+        then:
+          - logger.log: "Tick-tock, every 10 seconds"
