@@ -22,6 +22,7 @@ External ZigBee component for ESPHome.
 * Wifi co-existence on ESP32-C6
 * Deep-sleep should work
 * Not tested: groups
+* Time sync with coordinator (N.B. not tested DST behaviour)
 
 ### Limitations
 * Only end devices
@@ -35,7 +36,6 @@ External ZigBee component for ESPHome.
 ### ToDo List (Short-Mid term)
 * Custom clusters/attributes (done)
 * Switch to esp-zigbee-sdk 1.6 (done)
-* Time component
 * Light effects (through identify cluster commands)
 * Router devices
 * Easier support for sensors (done)
@@ -140,7 +140,25 @@ Examples:
         - zigbee.report: zb
 ```
 
+### Time sync
+Add a 'time' component with platform 'zigbee', and set 'device' to the 'id' of your zigbee component; e.g.:
+```
+zigbee:
+  id: "zb"
+  ...
 
+time:
+  - platform: zigbee
+    device: zb
+    timezone: Europe/London
+    on_time_sync:
+      then:
+        - logger.log: "Synchronized system clock"
+    on_time:
+      - seconds: /10
+        then:
+          - logger.log: "Tick-tock 10 seconds"
+```
 
 ## Example Zigbee device
 

@@ -19,6 +19,7 @@ namespace esphome {
 namespace zigbee {
 
 ZigBeeComponent *zigbeeC;
+ZigbeeTime *zigbeeT;
 
 device_params_t coord;
 
@@ -223,6 +224,10 @@ void ZigBeeComponent::searchBindings() {
   esp_zb_zdo_binding_table_req(mb_req, bindingTableCb, (void *) mb_req);
 }
 
+void ZigBeeComponent::set_timeref(ZigbeeTime* zt) {
+  zigbeeT = zt;
+}
+
 static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
   esp_err_t ret = ESP_OK;
 
@@ -235,11 +240,45 @@ static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t 
   return ret;
 }
 
+static esp_err_t zb_cmd_attribute_handler(const esp_zb_zcl_cmd_read_attr_resp_message_t *message) {
+  esp_err_t ret = ESP_OK;
+
+  ESP_RETURN_ON_FALSE(message, ESP_FAIL, TAG, "Empty message");
+  ESP_RETURN_ON_FALSE(message->info.status == ESP_ZB_ZCL_STATUS_SUCCESS, ESP_ERR_INVALID_ARG, TAG,
+                      "Received message: error status(%d)", message->info.status);
+  esp_zb_zcl_read_attr_resp_variable_t *variable = message->variables;
+  switch(message->info.cluster) {
+    case ESP_ZB_ZCL_CLUSTER_ID_TIME:
+      ESP_LOGI(TAG, "Recieved time information");
+      if(zigbeeT==NULL) {
+        ESP_LOGI(TAG, "No time component linked to update time!");
+      } else {
+        zigbeeT->recieve_timesync_response(message->variables);
+      }
+      break;
+    default:
+      ESP_LOGI(TAG, "Attribute data recieved (but not yet handled):");
+      while (variable) {
+          ESP_LOGI(TAG, "Read attribute response: status(%d), cluster(0x%x), attribute(0x%x), type(0x%x), value(%d)",
+                      variable->status, message->info.cluster,
+                      variable->attribute.id, variable->attribute.data.type,
+                      variable->attribute.data.value ? *(uint8_t *)variable->attribute.data.value : 0);
+          variable = variable->next;
+      }      
+  }
+
+  return ret;
+}
+
 static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id, const void *message) {
   esp_err_t ret = ESP_OK;
   switch (callback_id) {
     case ESP_ZB_CORE_SET_ATTR_VALUE_CB_ID:
       ret = zb_attribute_handler((esp_zb_zcl_set_attr_value_message_t *) message);
+      break;
+    case ESP_ZB_CORE_CMD_READ_ATTR_RESP_CB_ID:
+      ESP_LOGD(TAG, "Receive Zigbee Read Attribute response callback");
+      ret = zb_cmd_attribute_handler((esp_zb_zcl_cmd_read_attr_resp_message_t *) message);
       break;
     case ESP_ZB_CORE_CMD_DEFAULT_RESP_CB_ID:
       ESP_LOGD(TAG, "Receive Zigbee default response callback");
@@ -361,6 +400,7 @@ static void esp_zb_task_(void *pvParameters) {
 
 void ZigBeeComponent::setup() {
   zigbeeC = this;
+  zigbeeT = NULL;
   esp_zb_platform_config_t config = {
       .radio_config = ESP_ZB_DEFAULT_RADIO_CONFIG(),
       .host_config = ESP_ZB_DEFAULT_HOST_CONFIG(),
