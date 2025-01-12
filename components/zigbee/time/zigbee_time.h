@@ -4,10 +4,10 @@
 #include "esphome/components/time/real_time_clock.h"
 #include "../zigbee.h"
 
-#define ZIGBEE_TIME_OFFSET 946684800 /* Zigbee time is based on counting seconds from 1 Jan 2000 (=946684800) */
-
 namespace esphome {
 namespace zigbee {
+
+static const uint32_t zigbee_time_offset = 946684800; /* Zigbee time is based on counting seconds from 1 Jan 2000 (=946684800) */
 
 class ZigBeeComponent;
 
@@ -18,6 +18,7 @@ class ZigbeeTime : public time::RealTimeClock {
     void loop() override;
     void update() override;
     void sync(uint32_t utc);
+    void send_timesync_request();
 
   protected:
     ZigBeeComponent* zc_;

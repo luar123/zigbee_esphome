@@ -22,7 +22,7 @@ External ZigBee component for ESPHome.
 * Wifi co-existence on ESP32-C6
 * Deep-sleep should work
 * Not tested: groups
-* Time sync with coordinator (N.B. not tested DST behaviour)
+* Time sync with coordinator
 
 ### Limitations
 * Only end devices
@@ -141,7 +141,7 @@ Examples:
 ```
 
 ### Time sync
-Add a 'time' component with platform 'zigbee', and set 'device' to the 'id' of your zigbee component; e.g.:
+Add a 'time' component with platform 'zigbee', e.g.:
 ```
 zigbee:
   id: "zb"
@@ -149,7 +149,6 @@ zigbee:
 
 time:
   - platform: zigbee
-    device: zb
     timezone: Europe/London
     on_time_sync:
       then:

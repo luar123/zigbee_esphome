@@ -244,24 +244,23 @@ static esp_err_t zb_cmd_attribute_handler(const esp_zb_zcl_cmd_read_attr_resp_me
   esp_zb_zcl_read_attr_resp_variable_t *variable = message->variables;
   switch(message->info.cluster) {
     case ESP_ZB_ZCL_CLUSTER_ID_TIME:
-      ESP_LOGI(TAG, "Recieved time information");
-      if(zigbeeC->timesync_callback_==NULL) {
-        ESP_LOGI(TAG, "No time component linked to update time!");
+      ESP_LOGD(TAG, "Recieved time information");
+      if(zigbeeC->timesync_callback_==nullptr) {
+        ESP_LOGD(TAG, "No time component linked to update time!");
       } else {
         zigbeeC->timesync_callback_(message->variables);
       }
       break;
     default:
-      ESP_LOGI(TAG, "Attribute data recieved (but not yet handled):");
+      ESP_LOGD(TAG, "Attribute data recieved (but not yet handled):");
       while (variable) {
-          ESP_LOGI(TAG, "Read attribute response: status(%d), cluster(0x%x), attribute(0x%x), type(0x%x), value(%d)",
+          ESP_LOGD(TAG, "Read attribute response: status(%d), cluster(0x%x), attribute(0x%x), type(0x%x), value(%d)",
                       variable->status, message->info.cluster,
                       variable->attribute.id, variable->attribute.data.type,
                       variable->attribute.data.value ? *(uint8_t *)variable->attribute.data.value : 0);
           variable = variable->next;
       }      
   }
-
   return ret;
 }
 
@@ -272,7 +271,6 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
       ret = zb_attribute_handler((esp_zb_zcl_set_attr_value_message_t *) message);
       break;
     case ESP_ZB_CORE_CMD_READ_ATTR_RESP_CB_ID:
-      ESP_LOGD(TAG, "Receive Zigbee Read Attribute response callback");
       ret = zb_cmd_attribute_handler((esp_zb_zcl_cmd_read_attr_resp_message_t *) message);
       break;
     case ESP_ZB_CORE_CMD_DEFAULT_RESP_CB_ID:
@@ -395,8 +393,6 @@ static void esp_zb_task_(void *pvParameters) {
 
 void ZigBeeComponent::setup() {
   zigbeeC = this;
-  timesync_callback_ = NULL;
-
   esp_zb_platform_config_t config = {
       .radio_config = ESP_ZB_DEFAULT_RADIO_CONFIG(),
       .host_config = ESP_ZB_DEFAULT_HOST_CONFIG(),

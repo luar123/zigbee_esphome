@@ -37,7 +37,6 @@ zigbee:
 
 time:
   - platform: zigbee
-    device: zb  # this is the 'id' of thee zigbee component above
     id: the_time
     timezone: Europe/London
     on_time_sync:

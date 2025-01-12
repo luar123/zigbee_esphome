@@ -6,11 +6,12 @@ namespace zigbee {
 
 ZigbeeTime *zigbeeT;
 
-static void send_timesync_request() {
-	ESP_LOGI(TAG, "Requesting time from coordinator...");
+void ZigbeeTime::send_timesync_request() {
+	ESP_LOGD(TAG, "Requesting time from coordinator...");
   uint16_t attributes[] = 
   {
       ESP_ZB_ZCL_ATTR_TIME_TIME_ID,
+      ESP_ZB_ZCL_ATTR_TIME_TIME_STATUS_ID
   };
   esp_zb_zcl_read_attr_cmd_t read_req;
   read_req.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
@@ -20,45 +21,56 @@ static void send_timesync_request() {
   read_req.zcl_basic_cmd.dst_endpoint = 1;
   read_req.zcl_basic_cmd.src_endpoint = 1;
   read_req.zcl_basic_cmd.dst_addr_u.addr_short = 0x0000;  //coordinator
-  esp_zb_zcl_read_attr_cmd_req(&read_req);
+  if (esp_zb_lock_acquire(30/portTICK_PERIOD_MS)) {
+    esp_zb_zcl_read_attr_cmd_req(&read_req);
+    esp_zb_lock_release();
+    this->requested_ = true;
+  }
 }
 
 static void recieve_timesync_response(esp_zb_zcl_read_attr_resp_variable_t *variable) {
+  uint32_t utc = 0;
+  uint8_t sync_status = 0;
   while (variable) {
-      ESP_LOGI(TAG, "Read attribute response: status(%d), attribute(0x%x), type(0x%x), value(%d)",
+      ESP_LOGD(TAG, "Read attribute response: status(%d), attribute(0x%x), type(0x%x), value(%d)",
                   variable->status,
                   variable->attribute.id,
                   variable->attribute.data.type,
                   variable->attribute.data.value ? *(uint32_t *)variable->attribute.data.value : 0);
       switch (variable->attribute.id) {
         case ESP_ZB_ZCL_ATTR_TIME_TIME_ID:
-          {
-            uint32_t utc = *(uint32_t *)variable->attribute.data.value;
-            utc = utc + ZIGBEE_TIME_OFFSET;
-            ESP_LOGI(TAG, "Recieved UTC time: %d", utc);
-            zigbeeT->sync(utc);
+            utc = *(uint32_t *)variable->attribute.data.value;
+            utc = utc + zigbee_time_offset;
+            ESP_LOGD(TAG, "Recieved UTC time: %d", utc);
             break;
-          }
+        case ESP_ZB_ZCL_ATTR_TIME_TIME_STATUS_ID:
+          sync_status = *(uint8_t *)variable->attribute.data.value;
+          ESP_LOGD(TAG, "Recieved sync status time: 0x%x", sync_status);
+          break;
         default:
-          ESP_LOGI(TAG, "Recieved other time property: not yet handled");
+          ESP_LOGD(TAG, "Recieved other time property: not yet handled");
           break;
       }
       variable = variable->next;
   } 
+  if ((utc != 0) && (sync_status & 0x3 != 0)) { /* 0x3 = either Master or Syncronized bits set */
+    zigbeeT->sync(utc);
+  } else {
+    ESP_LOGD(TAG, "Did not recieve both time and status; clock NOT updated");
+  }
 }
 
 void ZigbeeTime::setup() {
-  ESP_LOGCONFIG(TAG, "Using Zigbee network as time source");
+  ESP_LOGD(TAG, "Using Zigbee network as time source");
   this->synced_ = false;
   this->requested_ = false;
-  zc_->timesync_callback_ = recieve_timesync_response;
+  this->zc_->timesync_callback_ = recieve_timesync_response;
   zigbeeT = this;
 }
 
 void ZigbeeTime::update() {
-  ESP_LOGCONFIG(TAG, "Updating time sync from Zigbee network...");
+  ESP_LOGD(TAG, "Updating time sync from Zigbee network...");
   this->synced_ = false;
-  this->requested_ = false;
 }
 
 void ZigbeeTime::loop() {
@@ -67,14 +79,14 @@ void ZigbeeTime::loop() {
   if (this->requested_) 
     return;
   if(zc_->connected) {
-    send_timesync_request();
-    this->requested_ = true;
+    this->send_timesync_request();
   }
 }
-
+  
 void ZigbeeTime::sync(uint32_t utc) {
-  time::RealTimeClock::synchronize_epoch_(utc);
+  this->synchronize_epoch_(utc);
   this->synced_ = true;
+  this->requested_ = false;
 } 
 
 }  // namespace zigbee

@@ -50,6 +50,7 @@ CONF_REPORT = "report"
 CONF_ACCESS = "access"
 CONF_SCALE = "scale"
 CONF_ATTRIBUTE_ID = "attribute_id"
+CONF_ZIGBEE_ID = "zigbee_id"
 
 zigbee_ns = cg.esphome_ns.namespace("zigbee")
 ZigBeeComponent = zigbee_ns.class_("ZigBeeComponent", cg.Component)

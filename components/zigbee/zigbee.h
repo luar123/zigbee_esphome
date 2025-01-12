@@ -78,7 +78,7 @@ class ZigBeeComponent : public Component {
   }
   void report();
   
-  void(*timesync_callback_)(esp_zb_zcl_read_attr_resp_variable_t*);
+  void(*timesync_callback_)(esp_zb_zcl_read_attr_resp_variable_t*){nullptr};
 
   void add_on_join_callback(std::function<void()> &&callback) { this->on_join_callback_.add(std::move(callback)); }
 
