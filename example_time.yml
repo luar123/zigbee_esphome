@@ -2,7 +2,7 @@ esphome:
   name: timesync-demo
 
 external_components:
-  - source: github://rot169/zigbee_esphome@timesync
+  - source: components
     components: [zigbee]
 
 esp32:
