@@ -4,8 +4,6 @@
 namespace esphome {
 namespace zigbee {
 
-ZigbeeTime *zigbeeT;
-
 void ZigbeeTime::send_timesync_request() {
 	ESP_LOGD(TAG, "Requesting time from coordinator...");
   uint16_t attributes[] = 
@@ -28,7 +26,7 @@ void ZigbeeTime::send_timesync_request() {
   }
 }
 
-static void recieve_timesync_response(esp_zb_zcl_read_attr_resp_variable_t *variable) {
+void ZigbeeTime::recieve_timesync_response(esp_zb_zcl_read_attr_resp_variable_t *variable) {
   uint32_t utc = 0;
   uint8_t sync_status = 0;
   while (variable) {
@@ -54,7 +52,7 @@ static void recieve_timesync_response(esp_zb_zcl_read_attr_resp_variable_t *vari
       variable = variable->next;
   } 
   if ((utc != 0) && (sync_status & 0x3 != 0)) { /* 0x3 = either Master or Syncronized bits set */
-    zigbeeT->sync(utc);
+    this->set_utc_time(utc);
   } else {
     ESP_LOGD(TAG, "Did not recieve both time and status; clock NOT updated");
   }
@@ -64,8 +62,7 @@ void ZigbeeTime::setup() {
   ESP_LOGD(TAG, "Using Zigbee network as time source");
   this->synced_ = false;
   this->requested_ = false;
-  this->zc_->timesync_callback_ = recieve_timesync_response;
-  zigbeeT = this;
+  this->zc_->zt_ = this;
 }
 
 void ZigbeeTime::update() {
@@ -83,7 +80,7 @@ void ZigbeeTime::loop() {
   }
 }
   
-void ZigbeeTime::sync(uint32_t utc) {
+void ZigbeeTime::set_utc_time(uint32_t utc) {
   this->synchronize_epoch_(utc);
   this->synced_ = true;
   this->requested_ = false;

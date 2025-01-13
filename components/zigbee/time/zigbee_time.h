@@ -17,8 +17,9 @@ class ZigbeeTime : public time::RealTimeClock {
     void setup() override;
     void loop() override;
     void update() override;
-    void sync(uint32_t utc);
+    void set_utc_time(uint32_t utc);
     void send_timesync_request();
+    void recieve_timesync_response(esp_zb_zcl_read_attr_resp_variable_t *variable);
 
   protected:
     ZigBeeComponent* zc_;

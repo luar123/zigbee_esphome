@@ -245,11 +245,15 @@ static esp_err_t zb_cmd_attribute_handler(const esp_zb_zcl_cmd_read_attr_resp_me
   switch(message->info.cluster) {
     case ESP_ZB_ZCL_CLUSTER_ID_TIME:
       ESP_LOGD(TAG, "Recieved time information");
-      if(zigbeeC->timesync_callback_==nullptr) {
-        ESP_LOGD(TAG, "No time component linked to update time!");
-      } else {
-        zigbeeC->timesync_callback_(message->variables);
-      }
+      #ifdef USE_ZIGBEE_TIME
+        if(zigbeeC->zt_==nullptr) {
+          ESP_LOGD(TAG, "No time component linked to update time!");
+        } else {
+          zigbeeC->zt_->recieve_timesync_response(message->variables);
+        }
+      #else
+        ESP_LOGD(TAG, "No zigbee time component included at build time!");
+      #endif
       break;
     default:
       ESP_LOGD(TAG, "Attribute data recieved (but not yet handled):");

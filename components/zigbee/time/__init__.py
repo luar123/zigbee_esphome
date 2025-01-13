@@ -19,6 +19,7 @@ CONFIG_SCHEMA = time_.TIME_SCHEMA.extend(
 
 
 async def to_code(config):
+    cg.add_define("USE_ZIGBEE_TIME")
     zb = await get_variable(config[CONF_ZIGBEE_ID])
     var = cg.new_Pvariable(config[CONF_ID], zb)
     await cg.register_component(var, config)
