@@ -11,6 +11,10 @@
 #include "esphome/core/automation.h"
 #include "zigbee_helpers.h"
 
+#ifdef USE_ZIGBEE_TIME
+#include "time/zigbee_time.h"
+#endif
+
 namespace esphome {
 namespace zigbee {
 
@@ -49,6 +53,7 @@ using zb_device_params_t = struct zb_device_params_s {
 template<class T> T get_value_by_type(uint8_t attr_type, void *data);
 
 class ZigBeeAttribute;
+class ZigbeeTime;
 
 class ZigBeeComponent : public Component {
  public:
@@ -77,6 +82,10 @@ class ZigBeeComponent : public Component {
     esp_zb_lock_release();
   }
   void report();
+
+#ifdef USE_ZIGBEE_TIME
+  ZigbeeTime *zt_{nullptr};
+#endif
 
   void add_on_join_callback(std::function<void()> &&callback) { this->on_join_callback_.add(std::move(callback)); }
 
