@@ -58,6 +58,7 @@ class ZigbeeTime;
 class ZigBeeComponent : public Component {
  public:
   void setup() override;
+  void loop() override;
   void dump_config() override;
   esp_err_t create_endpoint(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id);
   void set_ident_time(uint8_t ident_time);
@@ -89,16 +90,18 @@ class ZigBeeComponent : public Component {
 
   void add_on_join_callback(std::function<void()> &&callback) { this->on_join_callback_.add(std::move(callback)); }
 
-  bool is_started() { return this->started_; }
+  bool is_started() { return this->started; }
   bool connected = false;
-  bool started_ = false;
+  bool started = false;
 
   CallbackManager<void()> on_join_callback_{};
   std::deque<esp_zb_zcl_reporting_info_t> reporting_list;
 
  protected:
+  void send_report_();
   esp_zb_attribute_list_t *create_ident_cluster_();
   esp_zb_attribute_list_t *create_basic_cluster_();
+  bool report_ = false;
   std::map<uint8_t, esp_zb_ha_standard_devices_t> endpoint_list_;
   std::map<uint8_t, esp_zb_cluster_list_t *> cluster_list_;
   std::map<std::tuple<uint8_t, uint16_t, uint8_t>, esp_zb_attribute_list_t *> attribute_list_;
