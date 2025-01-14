@@ -12,7 +12,7 @@
 #include "zigbee_helpers.h"
 
 #ifdef USE_ZIGBEE_TIME
-  #include "time/zigbee_time.h"
+#include "time/zigbee_time.h"
 #endif
 
 namespace esphome {
@@ -82,10 +82,10 @@ class ZigBeeComponent : public Component {
     esp_zb_lock_release();
   }
   void report();
-  
-  #ifdef USE_ZIGBEE_TIME
-  ZigbeeTime* zt_{nullptr};
-  #endif
+
+#ifdef USE_ZIGBEE_TIME
+  ZigbeeTime *zt_{nullptr};
+#endif
 
   void add_on_join_callback(std::function<void()> &&callback) { this->on_join_callback_.add(std::move(callback)); }
 

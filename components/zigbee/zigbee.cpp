@@ -242,28 +242,27 @@ static esp_err_t zb_cmd_attribute_handler(const esp_zb_zcl_cmd_read_attr_resp_me
   ESP_RETURN_ON_FALSE(message->info.status == ESP_ZB_ZCL_STATUS_SUCCESS, ESP_ERR_INVALID_ARG, TAG,
                       "Received message: error status(%d)", message->info.status);
   esp_zb_zcl_read_attr_resp_variable_t *variable = message->variables;
-  switch(message->info.cluster) {
+  switch (message->info.cluster) {
     case ESP_ZB_ZCL_CLUSTER_ID_TIME:
       ESP_LOGD(TAG, "Recieved time information");
-      #ifdef USE_ZIGBEE_TIME
-        if(zigbeeC->zt_==nullptr) {
-          ESP_LOGD(TAG, "No time component linked to update time!");
-        } else {
-          zigbeeC->zt_->recieve_timesync_response(message->variables);
-        }
-      #else
-        ESP_LOGD(TAG, "No zigbee time component included at build time!");
-      #endif
+#ifdef USE_ZIGBEE_TIME
+      if (zigbeeC->zt_ == nullptr) {
+        ESP_LOGD(TAG, "No time component linked to update time!");
+      } else {
+        zigbeeC->zt_->recieve_timesync_response(message->variables);
+      }
+#else
+      ESP_LOGD(TAG, "No zigbee time component included at build time!");
+#endif
       break;
     default:
       ESP_LOGD(TAG, "Attribute data recieved (but not yet handled):");
       while (variable) {
-          ESP_LOGD(TAG, "Read attribute response: status(%d), cluster(0x%x), attribute(0x%x), type(0x%x), value(%d)",
-                      variable->status, message->info.cluster,
-                      variable->attribute.id, variable->attribute.data.type,
-                      variable->attribute.data.value ? *(uint8_t *)variable->attribute.data.value : 0);
-          variable = variable->next;
-      }      
+        ESP_LOGD(TAG, "Read attribute response: status(%d), cluster(0x%x), attribute(0x%x), type(0x%x), value(%d)",
+                 variable->status, message->info.cluster, variable->attribute.id, variable->attribute.data.type,
+                 variable->attribute.data.value ? *(uint8_t *) variable->attribute.data.value : 0);
+        variable = variable->next;
+      }
   }
   return ret;
 }
