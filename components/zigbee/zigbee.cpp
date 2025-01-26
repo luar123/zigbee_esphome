@@ -381,7 +381,7 @@ esp_err_t ZigBeeComponent::create_endpoint(uint8_t endpoint_id, esp_zb_ha_standa
   esp_zb_endpoint_config_t endpoint_config = {.endpoint = endpoint_id,
                                               .app_profile_id = ESP_ZB_AF_HA_PROFILE_ID,
                                               .app_device_id = device_id,
-                                              .app_device_version = 0};
+                                              .app_device_version = CONF_DEVICE_VERSION};
   return esp_zb_ep_list_add_ep(this->esp_zb_ep_list_, esp_zb_cluster_list, endpoint_config);
 }
 
@@ -424,6 +424,22 @@ void ZigBeeComponent::setup() {
   };
   zb_nwk_cfg.nwk_cfg.zed_cfg = zb_zed_cfg;
   esp_zb_init(&zb_nwk_cfg);
+
+#ifdef CONF_TRUST_CENTER_KEY
+  uint8_t trustkey_[16];
+  memset(trustkey_, 0, 16);
+
+  char temp[3] = {0};
+  for (int i = 0; i < 16; i++) {
+    strncpy(temp, &(CONF_TRUST_CENTER_KEY[i * 2]), 2);
+    trustkey_[i] = std::strtoul(temp, nullptr, 16);
+  }
+
+  ESP_LOGE(TAG, "Zigbee trust center key: %s", format_hex_pretty(trustkey_, 16).c_str());
+
+  esp_zb_enable_joining_to_distributed(true);
+  esp_zb_secur_TC_standard_distributed_key_set(trustkey_);
+#endif
 
   esp_err_t ret;
 
