@@ -51,6 +51,8 @@ CONF_ACCESS = "access"
 CONF_SCALE = "scale"
 CONF_ATTRIBUTE_ID = "attribute_id"
 CONF_ZIGBEE_ID = "zigbee_id"
+CONF_TRUST_CENTER_KEY = "trust_center_key"
+CONF_DEVICE_VERSION = "device_version"
 
 zigbee_ns = cg.esphome_ns.namespace("zigbee")
 ZigBeeComponent = zigbee_ns.class_("ZigBeeComponent", cg.Component)
@@ -172,6 +174,8 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_POWER_SUPPLY, default=0): cv.int_,  # make enum
             cv.Optional(CONF_VERSION, default=0): cv.int_,
             cv.Optional(CONF_AREA, default=0): cv.int_,  # make enum
+            cv.Optional(CONF_TRUST_CENTER_KEY): cv.bind_key,
+            cv.Optional(CONF_DEVICE_VERSION, default=0): cv.int_,
             cv.Required(CONF_ENDPOINTS): cv.ensure_list(
                 cv.Schema(
                     {
@@ -304,6 +308,10 @@ async def to_code(config):
     )
     if CONF_IDENT_TIME in config:
         cg.add(var.set_ident_time(config[CONF_IDENT_TIME]))
+    if CONF_TRUST_CENTER_KEY in config:
+        cg.add_define("CONF_TRUST_CENTER_KEY", config[CONF_TRUST_CENTER_KEY])
+    if CONF_DEVICE_VERSION in config:
+        cg.add_define("CONF_DEVICE_VERSION", config[CONF_DEVICE_VERSION])
     for ep in config[CONF_ENDPOINTS]:
         cg.add(
             var.create_default_cluster(ep[CONF_NUM], DEVICE_ID[ep[CONF_DEVICE_TYPE]])
