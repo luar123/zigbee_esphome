@@ -41,6 +41,7 @@ using zb_device_params_t = struct zb_device_params_s {
 #define INSTALLCODE_POLICY_ENABLE false /* enable the install code policy for security */
 #define ED_AGING_TIMEOUT ESP_ZB_ED_AGING_TIMEOUT_64MIN
 #define ED_KEEP_ALIVE 3000 /* 3000 millisecond */
+#define MAX_CHILDREN 10
 #define ESP_ZB_PRIMARY_CHANNEL_MASK \
   ESP_ZB_TRANSCEIVER_ALL_CHANNELS_MASK /* Zigbee primary channel mask use in the example */
 
@@ -106,7 +107,11 @@ class ZigBeeComponent : public Component {
   std::map<uint8_t, esp_zb_cluster_list_t *> cluster_list_;
   std::map<std::tuple<uint8_t, uint16_t, uint8_t>, esp_zb_attribute_list_t *> attribute_list_;
   std::map<std::tuple<uint8_t, uint16_t, uint8_t, uint16_t>, ZigBeeAttribute *> attributes_;
+#ifdef ZB_ED_ROLE
   esp_zb_nwk_device_type_t device_role_ = ESP_ZB_DEVICE_TYPE_ED;
+#else
+  esp_zb_nwk_device_type_t device_role_ = ESP_ZB_DEVICE_TYPE_ROUTER;
+#endif
   esp_zb_ep_list_t *esp_zb_ep_list_ = esp_zb_ep_list_create();
   struct {
     std::string model;
