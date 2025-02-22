@@ -30,7 +30,7 @@ class ZigBeeAttribute : public Component {
   // void dump_config() override;
   void loop() override;
 
-  template<typename T> void add_attr(uint8_t attr_access, T value_p);
+  template<typename T> void add_attr(uint8_t attr_access, uint8_t max_size, T value_p);
   void set_report();
   template<typename T> void set_attr(T *value_p);
   void set_attr(const std::string &str);
@@ -65,9 +65,9 @@ class ZigBeeAttribute : public Component {
   bool set_attr_requested_{false};
 };
 
-template<typename T> void ZigBeeAttribute::add_attr(uint8_t attr_access, T value_p) {
+template<typename T> void ZigBeeAttribute::add_attr(uint8_t attr_access, uint8_t max_size, T value_p) {
   this->zb_->add_attr(this, this->endpoint_id_, this->cluster_id_, this->role_, this->attr_id_, this->attr_type_,
-                      attr_access, value_p);
+                      attr_access, max_size, value_p);
 }
 
 template<typename T> void ZigBeeAttribute::set_attr(T *value_p) {

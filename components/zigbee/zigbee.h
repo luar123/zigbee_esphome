@@ -71,7 +71,7 @@ class ZigBeeComponent : public Component {
 
   template<typename T>
   void add_attr(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
-                uint8_t attr_type, uint8_t attr_access, T value_p);
+                uint8_t attr_type, uint8_t attr_access, uint8_t max_size, T value_p);
 
   void set_report(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id);
   void handle_attribute(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute);
@@ -134,16 +134,20 @@ extern "C" void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct);
 
 template<typename T>
 void ZigBeeComponent::add_attr(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role,
-                               uint16_t attr_id, uint8_t attr_type, uint8_t attr_access, T value_p) {
+                               uint16_t attr_id, uint8_t attr_type, uint8_t attr_access, uint8_t max_size, T value_p) {
   if constexpr (std::is_same<T, std::string>::value) {
-    auto str_len = std::min(static_cast<std::string::size_type>(254), value_p.size() + 1);
-    char zcl_str[255] = {0};
-    ZB_ZCL_SET_STRING_VAL(zcl_str, value_p.c_str(), str_len);
+    auto str_len = std::min(static_cast<std::string::size_type>(max_size), value_p.size());
+    // Manual setup of zcl_str is required because the size byte must be set to the maximum value, even though the
+    // initial string may be shorter.
+    char zcl_str[max_size + 1] = {0};
+    reinterpret_cast<uint8_t *>(zcl_str)[0] = max_size;
+    memcpy(zcl_str + 1, value_p.c_str(), str_len);
     add_attr_(attr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, zcl_str);
   } else if constexpr (std::is_convertible<T, const char *>::value) {
-    auto str_len = std::min(static_cast<size_t>(254), strlen(value_p));
-    char zcl_str[255] = {0};
-    ZB_ZCL_SET_STRING_VAL(zcl_str, value_p, str_len);
+    auto str_len = std::min(static_cast<size_t>(max_size), strlen(value_p));
+    char zcl_str[max_size + 1] = {0};
+    reinterpret_cast<uint8_t *>(zcl_str)[0] = max_size;
+    memcpy(zcl_str + 1, value_p, str_len);
     add_attr_(attr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, zcl_str);
   } else {
     add_attr_(attr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, &value_p);
