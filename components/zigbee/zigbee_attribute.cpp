@@ -20,6 +20,20 @@ void ZigBeeAttribute::set_attr_() {
   }
 }
 
+void ZigBeeAttribute::set_attr(const std::string &str) {
+  if (this->value_p != nullptr) {
+    delete[](char *) this->value_p;
+  }
+
+  size_t str_len = 0;
+  str_len = std::min(static_cast<std::string::size_type>(254), str.size() + 1);  // string length + null-termination
+  char *zcl_str = new char[str_len + 1];                                         // string + length octet
+  ZB_ZCL_SET_STRING_VAL(zcl_str, str.c_str(), str_len);
+
+  this->value_p = (void *) zcl_str;
+  this->set_attr_requested_ = true;
+}
+
 void ZigBeeAttribute::set_report() {
   this->zb_->set_report(this->endpoint_id_, this->cluster_id_, this->role_, this->attr_id_);
 }

@@ -102,6 +102,9 @@ class ZigBeeComponent : public Component {
   void send_report_();
   esp_zb_attribute_list_t *create_ident_cluster_();
   esp_zb_attribute_list_t *create_basic_cluster_();
+  template<typename T>
+  void add_attr_(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
+                 uint8_t attr_type, uint8_t attr_access, T *value_p);
   bool report_ = false;
   std::map<uint8_t, esp_zb_ha_standard_devices_t> endpoint_list_;
   std::map<uint8_t, esp_zb_cluster_list_t *> cluster_list_;
@@ -132,9 +135,27 @@ extern "C" void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct);
 template<typename T>
 void ZigBeeComponent::add_attr(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role,
                                uint16_t attr_id, uint8_t attr_type, uint8_t attr_access, T value_p) {
+  if constexpr (std::is_same<T, std::string>::value) {
+    auto str_len = std::min(static_cast<std::string::size_type>(254), value_p.size() + 1);
+    char zcl_str[255] = {0};
+    ZB_ZCL_SET_STRING_VAL(zcl_str, value_p.c_str(), str_len);
+    add_attr_(attr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, zcl_str);
+  } else if constexpr (std::is_convertible<T, const char *>::value) {
+    auto str_len = std::min(static_cast<size_t>(254), strlen(value_p));
+    char zcl_str[255] = {0};
+    ZB_ZCL_SET_STRING_VAL(zcl_str, value_p, str_len);
+    add_attr_(attr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, zcl_str);
+  } else {
+    add_attr_(attr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, &value_p);
+  }
+}
+
+template<typename T>
+void ZigBeeComponent::add_attr_(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role,
+                                uint16_t attr_id, uint8_t attr_type, uint8_t attr_access, T *value_p) {
   esp_zb_attribute_list_t *attr_list = this->attribute_list_[{endpoint_id, cluster_id, role}];
   esp_err_t ret =
-      esphome_zb_cluster_add_or_update_attr(cluster_id, attr_list, attr_id, attr_type, attr_access, &value_p);
+      esphome_zb_cluster_add_or_update_attr(cluster_id, attr_list, attr_id, attr_type, attr_access, value_p);
   if (ret != ESP_OK) {
     ESP_LOGE(TAG, "Could not add attribute 0x%04X to cluster 0x%04X in endpoint %u: %s", attr_id, cluster_id,
              endpoint_id, esp_err_to_name(ret));

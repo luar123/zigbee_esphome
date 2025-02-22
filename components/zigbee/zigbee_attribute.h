@@ -1,5 +1,7 @@
 #pragma once
 
+#include <type_traits>
+
 #include "esp_zigbee_core.h"
 #include "esphome/core/component.h"
 #include "esphome/core/automation.h"
@@ -31,6 +33,7 @@ class ZigBeeAttribute : public Component {
   template<typename T> void add_attr(uint8_t attr_access, T value_p);
   void set_report();
   template<typename T> void set_attr(T *value_p);
+  void set_attr(const std::string &str);
 
   uint8_t attr_type() { return attr_type_; }
 
@@ -68,10 +71,21 @@ template<typename T> void ZigBeeAttribute::add_attr(uint8_t attr_access, T value
 }
 
 template<typename T> void ZigBeeAttribute::set_attr(T *value_p) {
-  if (this->value_p != nullptr) {
-    delete (T *) this->value_p;
+  if constexpr (std::is_same<T, const char>::value || std::is_same<T, char>::value) {
+    size_t str_len = std::min(static_cast<size_t>(254), strlen(value_p));
+    char *zcl_str = new char[str_len + 1];  // string + length octet
+    ZB_ZCL_SET_STRING_VAL(zcl_str, value_p, str_len);
+
+    if (this->value_p != nullptr) {
+      delete[](char *) this->value_p;
+    }
+    this->value_p = (void *) zcl_str;
+  } else {
+    if (this->value_p != nullptr) {
+      delete (T *) this->value_p;
+    }
+    this->value_p = (void *) value_p;
   }
-  this->value_p = (void *) value_p;
   this->set_attr_requested_ = true;
 }
 
