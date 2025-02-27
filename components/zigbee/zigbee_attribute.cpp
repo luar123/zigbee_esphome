@@ -20,13 +20,60 @@ void ZigBeeAttribute::set_attr_() {
   }
 }
 
-void ZigBeeAttribute::set_report() {
-  this->zb_->set_report(this->endpoint_id_, this->cluster_id_, this->role_, this->attr_id_);
+void ZigBeeAttribute::report_() {
+  if (!this->zb_->is_started()) {
+    return;
+  }
+  if (esp_zb_lock_acquire(20 / portTICK_PERIOD_MS)) {
+    esp_zb_zcl_report_attr_cmd_t cmd = {
+        .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
+        .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
+    };
+    cmd.zcl_basic_cmd.dst_addr_u.addr_short = 0x0000;
+    cmd.zcl_basic_cmd.dst_endpoint = 1;
+    cmd.zcl_basic_cmd.src_endpoint = endpoint_id_;
+
+    cmd.clusterID = cluster_id_;
+    cmd.attributeID = attr_id_;
+
+    // cmd.cluster_role = reporting_info.cluster_role;
+    esp_zb_zcl_report_attr_cmd_req(&cmd);
+    this->report_requested_ = false;
+    esp_zb_lock_release();
+  }
 }
+
+void ZigBeeAttribute::set_report() {
+  esp_zb_zcl_reporting_info_t reporting_info = {
+      .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV,
+      .ep = this->endpoint_id_,
+      .cluster_id = this->cluster_id_,
+      .cluster_role = this->role_,
+      .attr_id = this->attr_id_,
+      .manuf_code = ESP_ZB_ZCL_ATTR_NON_MANUFACTURER_SPECIFIC,
+  };
+
+  // reporting_info.dst.short_addr = 0;
+  // reporting_info.dst.endpoint = 1;
+  reporting_info.dst.profile_id = ESP_ZB_AF_HA_PROFILE_ID;
+  reporting_info.u.send_info.min_interval = 10;     /*!< Actual minimum reporting interval */
+  reporting_info.u.send_info.max_interval = 0;      /*!< Actual maximum reporting interval */
+  reporting_info.u.send_info.def_min_interval = 10; /*!< Default minimum reporting interval */
+  reporting_info.u.send_info.def_max_interval = 0;  /*!< Default maximum reporting interval */
+  reporting_info.u.send_info.delta.s16 = 0;         /*!< Actual reportable change */
+
+  this->zb_->set_report(this, reporting_info);
+}
+
+void ZigBeeAttribute::report() { this->report_requested_ = true; }
 
 void ZigBeeAttribute::loop() {
   if (this->set_attr_requested_) {
     this->set_attr_();
+  }
+
+  if (this->report_requested_) {
+    this->report_();
   }
 }
 

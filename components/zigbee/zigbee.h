@@ -74,7 +74,7 @@ class ZigBeeComponent : public Component {
   void add_attr(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
                 uint8_t attr_type, uint8_t attr_access, uint8_t max_size, T value);
 
-  void set_report(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id);
+  void set_report(ZigBeeAttribute *attribute, esp_zb_zcl_reporting_info_t reporting_info);
   void handle_attribute(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute);
   void searchBindings();
   static void bindingTableCb(const esp_zb_zdo_binding_table_info_t *table_info, void *user_ctx);
@@ -97,7 +97,7 @@ class ZigBeeComponent : public Component {
   bool started = false;
 
   CallbackManager<void()> on_join_callback_{};
-  std::deque<esp_zb_zcl_reporting_info_t> reporting_list;
+  std::deque<std::tuple<ZigBeeAttribute *, esp_zb_zcl_reporting_info_t>> reporting_list;
 
  protected:
   void send_report_();
