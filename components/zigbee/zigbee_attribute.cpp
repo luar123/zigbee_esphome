@@ -26,7 +26,7 @@ void ZigBeeAttribute::set_attr(const std::string &str) {
   }
 
   size_t str_len = 0;
-  str_len = std::min(static_cast<std::string::size_type>(254), str.size());
+  str_len = std::min(static_cast<std::string::size_type>(this->max_size_), str.size());
   char *zcl_str = new char[str_len + 1];  // string + length octet
   ZB_ZCL_SET_STRING_VAL(zcl_str, str.c_str(), str_len);
 

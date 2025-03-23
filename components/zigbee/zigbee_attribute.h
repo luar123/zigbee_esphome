@@ -59,6 +59,7 @@ class ZigBeeAttribute : public Component {
   uint8_t role_;
   uint16_t attr_id_;
   uint8_t attr_type_;
+  uint8_t max_size_;
   float scale_;
   CallbackManager<void(esp_zb_zcl_attribute_t attribute)> on_value_callback_{};
   void *value_p{nullptr};
@@ -66,13 +67,14 @@ class ZigBeeAttribute : public Component {
 };
 
 template<typename T> void ZigBeeAttribute::add_attr(uint8_t attr_access, uint8_t max_size, T value_p) {
+  this->max_size_ = max_size;
   this->zb_->add_attr(this, this->endpoint_id_, this->cluster_id_, this->role_, this->attr_id_, this->attr_type_,
                       attr_access, max_size, value_p);
 }
 
 template<typename T> void ZigBeeAttribute::set_attr(T *value_p) {
   if constexpr (std::is_same<T, const char>::value || std::is_same<T, char>::value) {
-    size_t str_len = std::min(static_cast<size_t>(254), strlen(value_p));
+    size_t str_len = std::min(static_cast<size_t>(this->max_size_), strlen(value_p));
     char *zcl_str = new char[str_len + 1];  // string + length octet
     ZB_ZCL_SET_STRING_VAL(zcl_str, value_p, str_len);
 
