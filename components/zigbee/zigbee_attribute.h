@@ -74,9 +74,7 @@ template<typename T> void ZigBeeAttribute::add_attr(uint8_t attr_access, uint8_t
 
 template<typename T> void ZigBeeAttribute::set_attr(T *value_p) {
   if constexpr (std::is_same<T, const char>::value || std::is_same<T, char>::value) {
-    size_t str_len = std::min(static_cast<size_t>(this->max_size_), strlen(value_p));
-    char *zcl_str = new char[str_len + 1];  // string + length octet
-    ZB_ZCL_SET_STRING_VAL(zcl_str, value_p, str_len);
+    auto zcl_str = get_zcl_string(value_p, this->max_size_);
 
     if (this->value_p != nullptr) {
       delete[](char *) this->value_p;

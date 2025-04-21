@@ -52,6 +52,7 @@ using zb_device_params_t = struct zb_device_params_s {
   { .host_connection_mode = ZB_HOST_CONNECTION_MODE_NONE, }
 
 template<class T> T get_value_by_type(uint8_t attr_type, void *data);
+uint8_t *get_zcl_string(const char *str, uint8_t max_size, bool use_max_size = false);
 
 class ZigBeeAttribute;
 class ZigbeeTime;
@@ -135,20 +136,16 @@ extern "C" void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct);
 template<typename T>
 void ZigBeeComponent::add_attr(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role,
                                uint16_t attr_id, uint8_t attr_type, uint8_t attr_access, uint8_t max_size, T value_p) {
+  // The size byte of the zcl_str must be set to the maximum value,
+  // even though the initial string may be shorter.
   if constexpr (std::is_same<T, std::string>::value) {
-    auto str_len = std::min(static_cast<std::string::size_type>(max_size), value_p.size());
-    // Manual setup of zcl_str is required because the size byte must be set to the maximum value, even though the
-    // initial string may be shorter.
-    char zcl_str[max_size + 1] = {0};
-    reinterpret_cast<uint8_t *>(zcl_str)[0] = max_size;
-    memcpy(zcl_str + 1, value_p.c_str(), str_len);
+    auto zcl_str = get_zcl_string(value_p.c_str(), max_size, true);
     add_attr_(attr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, zcl_str);
+    delete[] zcl_str;
   } else if constexpr (std::is_convertible<T, const char *>::value) {
-    auto str_len = std::min(static_cast<size_t>(max_size), strlen(value_p));
-    char zcl_str[max_size + 1] = {0};
-    reinterpret_cast<uint8_t *>(zcl_str)[0] = max_size;
-    memcpy(zcl_str + 1, value_p, str_len);
+    auto zcl_str = get_zcl_string(value_p, max_size, true);
     add_attr_(attr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, zcl_str);
+    delete[] zcl_str;
   } else {
     add_attr_(attr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, &value_p);
   }
