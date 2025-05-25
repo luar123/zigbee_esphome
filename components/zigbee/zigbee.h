@@ -52,6 +52,7 @@ using zb_device_params_t = struct zb_device_params_s {
   { .host_connection_mode = ZB_HOST_CONNECTION_MODE_NONE, }
 
 template<class T> T get_value_by_type(uint8_t attr_type, void *data);
+uint8_t *get_zcl_string(const char *str, uint8_t max_size, bool use_max_size = false);
 
 class ZigBeeAttribute;
 class ZigbeeTime;
@@ -71,7 +72,7 @@ class ZigBeeComponent : public Component {
 
   template<typename T>
   void add_attr(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
-                uint8_t attr_type, uint8_t attr_access, T value_p);
+                uint8_t attr_type, uint8_t attr_access, uint8_t max_size, T value_p);
 
   void set_report(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id);
   void handle_attribute(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute);
@@ -102,6 +103,9 @@ class ZigBeeComponent : public Component {
   void send_report_();
   esp_zb_attribute_list_t *create_ident_cluster_();
   esp_zb_attribute_list_t *create_basic_cluster_();
+  template<typename T>
+  void add_attr_(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
+                 uint8_t attr_type, uint8_t attr_access, T *value_p);
   bool report_ = false;
   std::map<uint8_t, esp_zb_ha_standard_devices_t> endpoint_list_;
   std::map<uint8_t, esp_zb_cluster_list_t *> cluster_list_;
@@ -131,10 +135,28 @@ extern "C" void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct);
 
 template<typename T>
 void ZigBeeComponent::add_attr(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role,
-                               uint16_t attr_id, uint8_t attr_type, uint8_t attr_access, T value_p) {
+                               uint16_t attr_id, uint8_t attr_type, uint8_t attr_access, uint8_t max_size, T value_p) {
+  // The size byte of the zcl_str must be set to the maximum value,
+  // even though the initial string may be shorter.
+  if constexpr (std::is_same<T, std::string>::value) {
+    auto zcl_str = get_zcl_string(value_p.c_str(), max_size, true);
+    add_attr_(attr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, zcl_str);
+    delete[] zcl_str;
+  } else if constexpr (std::is_convertible<T, const char *>::value) {
+    auto zcl_str = get_zcl_string(value_p, max_size, true);
+    add_attr_(attr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, zcl_str);
+    delete[] zcl_str;
+  } else {
+    add_attr_(attr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, &value_p);
+  }
+}
+
+template<typename T>
+void ZigBeeComponent::add_attr_(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role,
+                                uint16_t attr_id, uint8_t attr_type, uint8_t attr_access, T *value_p) {
   esp_zb_attribute_list_t *attr_list = this->attribute_list_[{endpoint_id, cluster_id, role}];
   esp_err_t ret =
-      esphome_zb_cluster_add_or_update_attr(cluster_id, attr_list, attr_id, attr_type, attr_access, &value_p);
+      esphome_zb_cluster_add_or_update_attr(cluster_id, attr_list, attr_id, attr_type, attr_access, value_p);
   if (ret != ESP_OK) {
     ESP_LOGE(TAG, "Could not add attribute 0x%04X to cluster 0x%04X in endpoint %u: %s", attr_id, cluster_id,
              endpoint_id, esp_err_to_name(ret));

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <type_traits>
+
 #include "esp_zigbee_core.h"
 #include "esphome/core/component.h"
 #include "esphome/core/automation.h"
@@ -28,9 +30,10 @@ class ZigBeeAttribute : public Component {
   // void dump_config() override;
   void loop() override;
 
-  template<typename T> void add_attr(uint8_t attr_access, T value_p);
+  template<typename T> void add_attr(uint8_t attr_access, uint8_t max_size, T value_p);
   void set_report();
   template<typename T> void set_attr(T *value_p);
+  void set_attr(const std::string &str);
 
   uint8_t attr_type() { return attr_type_; }
 
@@ -56,22 +59,33 @@ class ZigBeeAttribute : public Component {
   uint8_t role_;
   uint16_t attr_id_;
   uint8_t attr_type_;
+  uint8_t max_size_;
   float scale_;
   CallbackManager<void(esp_zb_zcl_attribute_t attribute)> on_value_callback_{};
   void *value_p{nullptr};
   bool set_attr_requested_{false};
 };
 
-template<typename T> void ZigBeeAttribute::add_attr(uint8_t attr_access, T value_p) {
+template<typename T> void ZigBeeAttribute::add_attr(uint8_t attr_access, uint8_t max_size, T value_p) {
+  this->max_size_ = max_size;
   this->zb_->add_attr(this, this->endpoint_id_, this->cluster_id_, this->role_, this->attr_id_, this->attr_type_,
-                      attr_access, value_p);
+                      attr_access, max_size, value_p);
 }
 
 template<typename T> void ZigBeeAttribute::set_attr(T *value_p) {
-  if (this->value_p != nullptr) {
-    delete (T *) this->value_p;
+  if constexpr (std::is_same<T, const char>::value || std::is_same<T, char>::value) {
+    auto zcl_str = get_zcl_string(value_p, this->max_size_);
+
+    if (this->value_p != nullptr) {
+      delete[](char *) this->value_p;
+    }
+    this->value_p = (void *) zcl_str;
+  } else {
+    if (this->value_p != nullptr) {
+      delete (T *) this->value_p;
+    }
+    this->value_p = (void *) value_p;
   }
-  this->value_p = (void *) value_p;
   this->set_attr_requested_ = true;
 }
 

@@ -19,6 +19,7 @@ from esphome.const import (
     CONF_DEVICE,
     CONF_ID,
     CONF_LAMBDA,
+    CONF_MAX_LENGTH,
     CONF_NAME,
     CONF_ON_VALUE,
     CONF_POWER_SUPPLY,
@@ -108,6 +109,8 @@ def get_cv_by_type(attr_type):
 
 
 def get_default_by_type(attr_type):
+    if "CHAR_STRING" == attr_type:
+        return ""
     return 0
 
 
@@ -121,6 +124,21 @@ def validate_clusters(config):
     return config
 
 
+def validate_string_attributes(config):
+    if "CHAR_STRING" == config[CONF_TYPE]:
+        if CONF_MAX_LENGTH not in config.keys():
+            raise cv.Invalid(
+                f"The '{CONF_MAX_LENGTH}' parameter is mandatory for string attributes."
+            )
+
+        # Check that size of default value matches CONF_MAX_LENGTH
+        if len(config[CONF_VALUE]) > config[CONF_MAX_LENGTH]:
+            raise cv.Invalid(
+                "The default value is larger than the maximum length of the string attribute."
+            )
+    return config
+
+
 def validate_attributes(config):
     if CONF_VALUE in config:
         config[CONF_VALUE] = get_cv_by_type(config[CONF_TYPE])(config[CONF_VALUE])
@@ -131,6 +149,7 @@ def validate_attributes(config):
         if CONF_ACCESS in config
         else 0
     )
+    validate_string_attributes(config)
 
     return config
 
@@ -225,6 +244,9 @@ CONFIG_SCHEMA = cv.All(
                                                 cv.Optional(
                                                     CONF_LAMBDA
                                                 ): cv.returning_lambda,
+                                                cv.Optional(
+                                                    CONF_MAX_LENGTH
+                                                ): cv.int_range(0, 254),
                                             }
                                         ),
                                         validate_attributes,
@@ -348,6 +370,7 @@ async def to_code(config):
                 cg.add(
                     attr_var.add_attr(
                         attr[CONF_ACCESS],
+                        attr.get(CONF_MAX_LENGTH, 0),
                         attr[CONF_VALUE],
                     )
                 )

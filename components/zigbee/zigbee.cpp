@@ -31,6 +31,28 @@ uint8_t *get_character_string(std::string str) {
   return cstr;
 }
 
+/**
+ * Creates a ZCL string from the given input string.
+ *
+ * @param str          Pointer to the input null-terminated C-style string.
+ * @param max_size     Maximum allowable size for the resulting ZCL string. Maximum value: 254.
+ * @param use_max_size Optional. If true, the `max_size` is used directly,
+ *                     overriding the actual size of the input string.
+ * @return             Pointer to a dynamically allocated ZCL string.
+ *                     NOTE: Caller is responsible for freeing the allocated memory with `delete[]`.
+ *
+ */
+uint8_t *get_zcl_string(const char *str, uint8_t max_size, bool use_max_size) {
+  uint8_t str_len = static_cast<uint8_t>(strlen(str));
+  uint8_t zcl_str_size = use_max_size ? max_size : std::min(max_size, str_len);
+
+  uint8_t *zcl_str = new uint8_t[zcl_str_size + 1];  // string + length octet
+  zcl_str[0] = zcl_str_size;
+  memcpy(zcl_str + 1, str, str_len);
+
+  return zcl_str;
+}
+
 static void bdb_start_top_level_commissioning_cb(uint8_t mode_mask) {
   if (esp_zb_bdb_start_top_level_commissioning(mode_mask) != ESP_OK) {
     ESP_LOGE(TAG, "Start network steering failed!");
