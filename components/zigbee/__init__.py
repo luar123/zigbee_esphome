@@ -462,7 +462,10 @@ async def zigbee_set_attr_to_code(config, action_id, template_arg, args):
         CORE.config["zigbee"],
         config[CONF_ID],
     )
-    template_arg = cg.TemplateArguments(get_c_type(attr[CONF_TYPE]), template_arg.args)
+    template_arg = cg.TemplateArguments(
+        get_c_type(attr[CONF_TYPE]),
+        template_arg.args if template_arg.args.args else None,
+    )
     parent = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, parent)
     template_ = await cg.templatable(
