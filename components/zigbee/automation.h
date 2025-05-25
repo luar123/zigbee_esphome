@@ -33,9 +33,9 @@ template<typename T, typename... Ts> class SetAttrAction : public Action<Ts...> 
   TEMPLATABLE_VALUE(T, value);
 
   void play(Ts... x) override {
-    T *value = new T;
-    *value = this->value_.value(x...);
-    this->parent_->set_attr(value);
+    // T *value = new T;
+    //*value = this->value_.value(x...);
+    this->parent_->set_attr(this->value_.value(x...));
   }
 
  protected:

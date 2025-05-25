@@ -72,7 +72,7 @@ class ZigBeeComponent : public Component {
 
   template<typename T>
   void add_attr(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
-                uint8_t attr_type, uint8_t attr_access, uint8_t max_size, T value_p);
+                uint8_t attr_type, uint8_t attr_access, uint8_t max_size, T value);
 
   void set_report(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id);
   void handle_attribute(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute);
@@ -136,19 +136,19 @@ extern "C" void zb_set_ed_node_descriptor(bool power_src, bool rx_on_when_idle, 
 
 template<typename T>
 void ZigBeeComponent::add_attr(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role,
-                               uint16_t attr_id, uint8_t attr_type, uint8_t attr_access, uint8_t max_size, T value_p) {
+                               uint16_t attr_id, uint8_t attr_type, uint8_t attr_access, uint8_t max_size, T value) {
   // The size byte of the zcl_str must be set to the maximum value,
   // even though the initial string may be shorter.
   if constexpr (std::is_same<T, std::string>::value) {
-    auto zcl_str = get_zcl_string(value_p.c_str(), max_size, true);
+    auto zcl_str = get_zcl_string(value.c_str(), max_size, true);
     add_attr_(attr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, zcl_str);
     delete[] zcl_str;
   } else if constexpr (std::is_convertible<T, const char *>::value) {
-    auto zcl_str = get_zcl_string(value_p, max_size, true);
+    auto zcl_str = get_zcl_string(value, max_size, true);
     add_attr_(attr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, zcl_str);
     delete[] zcl_str;
   } else {
-    add_attr_(attr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, &value_p);
+    add_attr_(attr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, &value);
   }
 }
 
