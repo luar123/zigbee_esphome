@@ -88,6 +88,7 @@ esp_err_t esphome_zb_cluster_add_or_update_attr(uint16_t cluster_id, esp_zb_attr
   esp_err_t ret;
   ret = esp_zb_cluster_update_attr(attr_list, attr_id, value_p);
   if (ret != ESP_OK) {
+    ESP_LOGE("zigbee_helper", "Ignore previous attribute not found error");
     if (attr_access > 0) {
       ret = esp_zb_cluster_add_attr(attr_list, cluster_id, attr_id, attr_type, attr_access, value_p);
     } else {
