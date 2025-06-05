@@ -372,7 +372,10 @@ esp_zb_attribute_list_t *ZigBeeComponent::create_basic_cluster_() {
   esp_zb_basic_cluster_add_attr(attr_list, ESP_ZB_ZCL_ATTR_BASIC_LOCATION_DESCRIPTION_ID, Location);
   esp_zb_basic_cluster_add_attr(attr_list, ESP_ZB_ZCL_ATTR_BASIC_PHYSICAL_ENVIRONMENT_ID,
                                 &(this->basic_cluster_data_.physical_env));
-  delete[] ManufacturerName, ModelIdentifier, DateCode, Location;
+  delete[] ManufacturerName;
+  delete[] ModelIdentifier;
+  delete[] DateCode;
+  delete[] Location;
   return attr_list;
 }
 
