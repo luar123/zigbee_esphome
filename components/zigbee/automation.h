@@ -32,11 +32,7 @@ template<typename T, typename... Ts> class SetAttrAction : public Action<Ts...> 
   SetAttrAction(ZigBeeAttribute *parent) : parent_(parent) {}
   TEMPLATABLE_VALUE(T, value);
 
-  void play(Ts... x) override {
-    // T *value = new T;
-    //*value = this->value_.value(x...);
-    this->parent_->set_attr(this->value_.value(x...));
-  }
+  void play(Ts... x) override { this->parent_->set_attr(this->value_.value(x...)); }
 
  protected:
   ZigBeeAttribute *parent_;

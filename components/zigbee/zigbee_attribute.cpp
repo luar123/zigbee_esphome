@@ -20,16 +20,6 @@ void ZigBeeAttribute::set_attr_() {
   }
 }
 
-/**void ZigBeeAttribute::set_attr(const std::string &str) {
-  if (this->value_p != nullptr) {
-    delete[](char *) this->value_p;
-  }
-
-  auto zcl_str = get_zcl_string(str.c_str(), str.size());
-  this->value_p = (void *) zcl_str;
-  this->set_attr_requested_ = true;
-}**/
-
 void ZigBeeAttribute::set_report() {
   this->zb_->set_report(this->endpoint_id_, this->cluster_id_, this->role_, this->attr_id_);
 }

@@ -33,7 +33,6 @@ class ZigBeeAttribute : public Component {
   template<typename T> void add_attr(uint8_t attr_access, uint8_t max_size, T value);
   void set_report();
   template<typename T> void set_attr(const T &value);
-  // void set_attr(const std::string &str);
 
   uint8_t attr_type() { return attr_type_; }
 
