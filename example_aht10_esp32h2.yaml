@@ -31,6 +31,7 @@ globals:
 i2c:
   sda: 12
   scl: 22
+  scan: false
 
 sensor:
   - platform: aht10
