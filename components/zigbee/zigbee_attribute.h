@@ -30,10 +30,9 @@ class ZigBeeAttribute : public Component {
   // void dump_config() override;
   void loop() override;
 
-  template<typename T> void add_attr(uint8_t attr_access, uint8_t max_size, T value_p);
+  template<typename T> void add_attr(uint8_t attr_access, uint8_t max_size, T value);
   void set_report();
-  template<typename T> void set_attr(T *value_p);
-  void set_attr(const std::string &str);
+  template<typename T> void set_attr(const T &value);
 
   uint8_t attr_type() { return attr_type_; }
 
@@ -66,15 +65,22 @@ class ZigBeeAttribute : public Component {
   bool set_attr_requested_{false};
 };
 
-template<typename T> void ZigBeeAttribute::add_attr(uint8_t attr_access, uint8_t max_size, T value_p) {
+template<typename T> void ZigBeeAttribute::add_attr(uint8_t attr_access, uint8_t max_size, T value) {
   this->max_size_ = max_size;
   this->zb_->add_attr(this, this->endpoint_id_, this->cluster_id_, this->role_, this->attr_id_, this->attr_type_,
-                      attr_access, max_size, value_p);
+                      attr_access, max_size, std::move(value));
 }
 
-template<typename T> void ZigBeeAttribute::set_attr(T *value_p) {
-  if constexpr (std::is_same<T, const char>::value || std::is_same<T, char>::value) {
-    auto zcl_str = get_zcl_string(value_p, this->max_size_);
+template<typename T> void ZigBeeAttribute::set_attr(const T &value) {
+  if constexpr (std::is_convertible<T, const char *>::value) {
+    auto zcl_str = get_zcl_string(value, this->max_size_);
+
+    if (this->value_p != nullptr) {
+      delete[](char *) this->value_p;
+    }
+    this->value_p = (void *) zcl_str;
+  } else if constexpr (std::is_same<T, std::string>::value) {
+    auto zcl_str = get_zcl_string(value.c_str(), this->max_size_);
 
     if (this->value_p != nullptr) {
       delete[](char *) this->value_p;
@@ -84,6 +90,8 @@ template<typename T> void ZigBeeAttribute::set_attr(T *value_p) {
     if (this->value_p != nullptr) {
       delete (T *) this->value_p;
     }
+    T *value_p = new T;
+    *value_p = value;
     this->value_p = (void *) value_p;
   }
   this->set_attr_requested_ = true;
@@ -91,37 +99,21 @@ template<typename T> void ZigBeeAttribute::set_attr(T *value_p) {
 
 #ifdef USE_SENSOR
 template<typename T> void ZigBeeAttribute::connect(sensor::Sensor *sensor) {
-  sensor->add_on_state_callback([=, this](float value) {
-    T *value_p = new T;
-    *value_p = (T) (this->scale_ * value);
-    this->set_attr(value_p);
-  });
+  sensor->add_on_state_callback([=, this](float value) { this->set_attr((T) (this->scale_ * value)); });
 }
 
 template<typename T> void ZigBeeAttribute::connect(sensor::Sensor *sensor, std::function<T(float)> &&f) {
-  sensor->add_on_state_callback([=, this](float value) {
-    T *value_p = new T;
-    *value_p = f(value);
-    this->set_attr(value_p);
-  });
+  sensor->add_on_state_callback([=, this](float value) { this->set_attr(f(value)); });
 }
 #endif
 
 #ifdef USE_BINARY_SENSOR
 template<typename T> void ZigBeeAttribute::connect(binary_sensor::BinarySensor *sensor) {
-  sensor->add_on_state_callback([=, this](bool value) {
-    T *value_p = new T;
-    *value_p = (T) (this->scale_ * value);
-    this->set_attr(value_p);
-  });
+  sensor->add_on_state_callback([=, this](bool value) { this->set_attr((T) (this->scale_ * value)); });
 }
 
 template<typename T> void ZigBeeAttribute::connect(binary_sensor::BinarySensor *sensor, std::function<T(bool)> &&f) {
-  sensor->add_on_state_callback([=, this](bool value) {
-    T *value_p = new T;
-    *value_p = f(value);
-    this->set_attr(value_p);
-  });
+  sensor->add_on_state_callback([=, this](bool value) { this->set_attr(f(value)); });
 }
 #endif
 

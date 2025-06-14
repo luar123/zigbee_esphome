@@ -22,15 +22,6 @@ ZigBeeComponent *zigbeeC;
 
 device_params_t coord;
 
-/********************* Define functions **************************/
-uint8_t *get_character_string(std::string str) {
-  uint8_t *cstr = new uint8_t[(str.size() + 2)];
-  std::snprintf((char *) (cstr + 1), str.size() + 1, "%s", str.c_str());
-  cstr[0] = str.size();
-
-  return cstr;
-}
-
 /**
  * Creates a ZCL string from the given input string.
  *
@@ -363,11 +354,11 @@ esp_zb_attribute_list_t *ZigBeeComponent::create_basic_cluster_() {
   ESP_LOGD(TAG, "Manufacturer: %s", this->basic_cluster_data_.manufacturer.c_str());
   ESP_LOGD(TAG, "Date: %s", this->basic_cluster_data_.date.c_str());
   ESP_LOGD(TAG, "Area: %s", this->basic_cluster_data_.area.c_str());
-  uint8_t *ManufacturerName =
-      get_character_string(this->basic_cluster_data_.manufacturer);  // warning: this is in format {length, 'string'} :
-  uint8_t *ModelIdentifier = get_character_string(this->basic_cluster_data_.model);
-  uint8_t *DateCode = get_character_string(this->basic_cluster_data_.date);
-  uint8_t *Location = get_character_string(this->basic_cluster_data_.area);
+  uint8_t *ManufacturerName = get_zcl_string(this->basic_cluster_data_.manufacturer.c_str(),
+                                             32);  // warning: this is in format {length, 'string'} :
+  uint8_t *ModelIdentifier = get_zcl_string(this->basic_cluster_data_.model.c_str(), 32);
+  uint8_t *DateCode = get_zcl_string(this->basic_cluster_data_.date.c_str(), 16);
+  uint8_t *Location = get_zcl_string(this->basic_cluster_data_.area.c_str(), 16);
   esp_zb_attribute_list_t *attr_list = esp_zb_basic_cluster_create(&basic_cluster_cfg);
   esp_zb_basic_cluster_add_attr(attr_list, ESP_ZB_ZCL_ATTR_BASIC_APPLICATION_VERSION_ID,
                                 &(this->basic_cluster_data_.app_version));
@@ -381,6 +372,10 @@ esp_zb_attribute_list_t *ZigBeeComponent::create_basic_cluster_() {
   esp_zb_basic_cluster_add_attr(attr_list, ESP_ZB_ZCL_ATTR_BASIC_LOCATION_DESCRIPTION_ID, Location);
   esp_zb_basic_cluster_add_attr(attr_list, ESP_ZB_ZCL_ATTR_BASIC_PHYSICAL_ENVIRONMENT_ID,
                                 &(this->basic_cluster_data_.physical_env));
+  delete[] ManufacturerName;
+  delete[] ModelIdentifier;
+  delete[] DateCode;
+  delete[] Location;
   return attr_list;
 }
 
