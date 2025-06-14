@@ -31,10 +31,10 @@ void ZigBeeAttribute::report_() {
     };
     cmd.zcl_basic_cmd.dst_addr_u.addr_short = 0x0000;
     cmd.zcl_basic_cmd.dst_endpoint = 1;
-    cmd.zcl_basic_cmd.src_endpoint = endpoint_id_;
+    cmd.zcl_basic_cmd.src_endpoint = this->endpoint_id_;
 
-    cmd.clusterID = cluster_id_;
-    cmd.attributeID = attr_id_;
+    cmd.clusterID = this->cluster_id_;
+    cmd.attributeID = this->attr_id_;
 
     // cmd.cluster_role = reporting_info.cluster_role;
     esp_zb_zcl_report_attr_cmd_req(&cmd);

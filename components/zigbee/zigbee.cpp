@@ -54,13 +54,10 @@ void ZigBeeComponent::set_report(ZigBeeAttribute *attribute, esp_zb_zcl_reportin
   this->reporting_list.push_back(std::make_tuple(attribute, reporting_info));
 }
 
-void ZigBeeComponent::report() { this->report_ = true; }
-
-void ZigBeeComponent::send_report_() {
+void ZigBeeComponent::report() {
   for (const auto &[attribute, _] : zigbeeC->reporting_list) {
     attribute->report();
   }
-  this->report_ = false;
 }
 
 void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
@@ -468,12 +465,6 @@ void ZigBeeComponent::setup() {
     batterypowered = false;
   }
   xTaskCreate(esp_zb_task_, "Zigbee_main", 4096, &batterypowered, 24, NULL);
-}
-
-void ZigBeeComponent::loop() {
-  if (this->report_) {
-    this->send_report_();
-  }
 }
 
 void ZigBeeComponent::dump_config() {
