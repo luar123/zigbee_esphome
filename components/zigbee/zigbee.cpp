@@ -50,49 +50,13 @@ static void bdb_start_top_level_commissioning_cb(uint8_t mode_mask) {
   }
 }
 
-void ZigBeeComponent::set_report(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id) {
-  /* Config the reporting info  */
-  esp_zb_zcl_reporting_info_t reporting_info = {
-      .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV,
-      .ep = endpoint_id,
-      .cluster_id = cluster_id,
-      .cluster_role = role,
-      .attr_id = attr_id,
-      .manuf_code = ESP_ZB_ZCL_ATTR_NON_MANUFACTURER_SPECIFIC,
-  };
-
-  // reporting_info.dst.short_addr = 0;
-  // reporting_info.dst.endpoint = 1;
-  reporting_info.dst.profile_id = ESP_ZB_AF_HA_PROFILE_ID;
-  reporting_info.u.send_info.min_interval = 10;     /*!< Actual minimum reporting interval */
-  reporting_info.u.send_info.max_interval = 0;      /*!< Actual maximum reporting interval */
-  reporting_info.u.send_info.def_min_interval = 10; /*!< Default minimum reporting interval */
-  reporting_info.u.send_info.def_max_interval = 0;  /*!< Default maximum reporting interval */
-  reporting_info.u.send_info.delta.s16 = 0;         /*!< Actual reportable change */
-
-  this->reporting_list.push_back(reporting_info);
+void ZigBeeComponent::set_report(ZigBeeAttribute *attribute, esp_zb_zcl_reporting_info_t reporting_info) {
+  this->reporting_list.push_back(std::make_tuple(attribute, reporting_info));
 }
 
-void ZigBeeComponent::report() { this->report_ = true; }
-
-void ZigBeeComponent::send_report_() {
-  if (esp_zb_lock_acquire(20 / portTICK_PERIOD_MS)) {
-    esp_zb_zcl_report_attr_cmd_t cmd = {
-        .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
-        .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
-    };
-    cmd.zcl_basic_cmd.dst_addr_u.addr_short = 0x0000;
-    cmd.zcl_basic_cmd.dst_endpoint = 1;
-
-    for (auto reporting_info : zigbeeC->reporting_list) {
-      cmd.zcl_basic_cmd.src_endpoint = reporting_info.ep;
-      cmd.clusterID = reporting_info.cluster_id;
-      cmd.attributeID = reporting_info.attr_id;
-      // cmd.cluster_role = reporting_info.cluster_role;
-      esp_zb_zcl_report_attr_cmd_req(&cmd);
-    }
-    this->report_ = false;
-    esp_zb_lock_release();
+void ZigBeeComponent::report() {
+  for (const auto &[attribute, _] : zigbeeC->reporting_list) {
+    attribute->report();
   }
 }
 
@@ -487,20 +451,12 @@ void ZigBeeComponent::setup() {
   }
 
   // reporting
-  for (auto reporting_info : this->reporting_list) {
+  for (auto &[_, reporting_info] : this->reporting_list) {
     ESP_LOGD(TAG, "set reporting for cluster: %u", reporting_info.cluster_id);
-    esp_zb_zcl_attr_location_info_t attr_info = {
-        .endpoint_id = reporting_info.ep,
-        .cluster_id = reporting_info.cluster_id,
-        .cluster_role = reporting_info.cluster_role,
-        .manuf_code = reporting_info.manuf_code,
-        .attr_id = reporting_info.attr_id,
-    };
     if (esp_zb_zcl_update_reporting_info(&reporting_info) != ESP_OK) {
       ESP_LOGE(TAG, "Could not configure reporting for attribute 0x%04X in cluster 0x%04X in endpoint %u",
                reporting_info.attr_id, reporting_info.cluster_id, reporting_info.ep);
     }
-    // ESP_ERROR_CHECK(esp_zb_zcl_start_attr_reporting(attr_info));  // is this needed?
   }
   bool batterypowered = new bool;
   if ((this->device_role_ == ESP_ZB_DEVICE_TYPE_ED) && this->basic_cluster_data_.power == 0x03) {
@@ -509,12 +465,6 @@ void ZigBeeComponent::setup() {
     batterypowered = false;
   }
   xTaskCreate(esp_zb_task_, "Zigbee_main", 4096, &batterypowered, 24, NULL);
-}
-
-void ZigBeeComponent::loop() {
-  if (this->report_) {
-    this->send_report_();
-  }
 }
 
 void ZigBeeComponent::dump_config() {

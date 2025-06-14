@@ -65,6 +65,9 @@ ResetZigbeeAction = zigbee_ns.class_(
     "ResetZigbeeAction", automation.Action, cg.Parented.template(ZigBeeComponent)
 )
 SetAttrAction = zigbee_ns.class_("SetAttrAction", automation.Action)
+ReportAttrAction = zigbee_ns.class_(
+    "ReportAttrAction", automation.Action, cg.Parented.template(ZigBeeAttribute)
+)
 ReportAction = zigbee_ns.class_(
     "ReportAction", automation.Action, cg.Parented.template(ZigBeeComponent)
 )
@@ -473,4 +476,15 @@ async def zigbee_set_attr_to_code(config, action_id, template_arg, args):
     )
     cg.add(var.set_value(template_))
 
+    return var
+
+
+@automation.register_action(
+    "zigbee.reportAttr",
+    ReportAttrAction,
+    automation.maybe_simple_id(ZIGBEE_ATTRIBUTE_ACTION_SCHEMA),
+)
+async def zigbee_report_attr_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
     return var

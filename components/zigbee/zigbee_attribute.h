@@ -32,6 +32,7 @@ class ZigBeeAttribute : public Component {
 
   template<typename T> void add_attr(uint8_t attr_access, uint8_t max_size, T value);
   void set_report();
+  void report();
   template<typename T> void set_attr(const T &value);
 
   uint8_t attr_type() { return attr_type_; }
@@ -52,6 +53,7 @@ class ZigBeeAttribute : public Component {
 
  protected:
   void set_attr_();
+  void report_();
   ZigBeeComponent *zb_;
   uint8_t endpoint_id_;
   uint16_t cluster_id_;
@@ -63,6 +65,7 @@ class ZigBeeAttribute : public Component {
   CallbackManager<void(esp_zb_zcl_attribute_t attribute)> on_value_callback_{};
   void *value_p{nullptr};
   bool set_attr_requested_{false};
+  bool report_requested_{false};
 };
 
 template<typename T> void ZigBeeAttribute::add_attr(uint8_t attr_access, uint8_t max_size, T value) {

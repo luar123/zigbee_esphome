@@ -27,6 +27,11 @@ template<typename... Ts> class ReportAction : public Action<Ts...>, public Paren
   void play(Ts... x) override { this->parent_->report(); }
 };
 
+template<typename... Ts> class ReportAttrAction : public Action<Ts...>, public Parented<ZigBeeAttribute> {
+ public:
+  void play(Ts... x) override { this->parent_->report(); }
+};
+
 template<typename T, typename... Ts> class SetAttrAction : public Action<Ts...> {
  public:
   SetAttrAction(ZigBeeAttribute *parent) : parent_(parent) {}
