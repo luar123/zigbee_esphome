@@ -192,10 +192,11 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(
                 CONF_DATE, default=datetime.datetime.now().strftime("%Y%m%d")
             ): cv.string,
-            cv.Optional(CONF_IDENT_TIME): cv.string,
+            cv.Optional(CONF_IDENT_TIME): cv.int_,
             cv.Optional(CONF_POWER_SUPPLY, default=0): cv.int_,  # make enum
             cv.Optional(CONF_VERSION, default=0): cv.int_,
             cv.Optional(CONF_AREA, default=0): cv.int_,  # make enum
+            cv.Optional(CONF_ROUTER, default=False): cv.boolean,
             cv.Required(CONF_ENDPOINTS): cv.ensure_list(
                 cv.Schema(
                     {
@@ -274,7 +275,6 @@ CONFIG_SCHEMA = cv.All(
                     cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ZigBeeJoinTrigger),
                 }
             ),
-            cv.Optional(CONF_ROUTER, default=False): cv.boolean,
         }
     ).extend(cv.COMPONENT_SCHEMA),
     cv.require_framework_version(esp_idf=cv.Version(5, 1, 2)),

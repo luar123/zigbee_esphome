@@ -16,15 +16,17 @@ External ZigBee component for ESPHome.
 * Attribute received trigger
 * Time sync with coordinator
 * Custom clusters and attributes
-* (binary) sensors can be connected to attributs without need for lambdas/actions 
+* (normal, binary, text) sensors can be connected to attributes without need for lambdas/actions 
 * Wifi co-existence on ESP32-C6
 * Deep-sleep should work
 * Not tested: groups
 * Time sync with coordinator
+* Router
 
 ### Limitations
-* Only end devices
-* Attribute set action and OnValue trigger works only with numeric types
+* No coordinator devices
+* Attribute set action works only with numeric types and character string
+* Attribute OnValue trigger works only with numeric types
 * Reporting can be enabled, but not configured
 * No control devices like switches ([workaround](https://github.com/luar123/zigbee_esphome/discussions/18#discussioncomment-11875376))
 * Needs esp-idf >=5.1.4
@@ -33,8 +35,7 @@ External ZigBee component for ESPHome.
 
 ### ToDo List (Short-Mid term)
 * Light effects (through identify cluster commands)
-* Router devices
-* Easier setup of devices/entpoints
+* Easier setup of devices/endpoints
 
 ### Not planed (feel free to submit a PR)
 * Coordinator devices
@@ -54,6 +55,16 @@ zigbee:
   ...
 ```
 ### Configuration variables:
+* **id** (Optional, string): Manually specify the ID for code generation.
+* **name** (Optional, string): Zigbee Model Identifier in basic cluster. Used by coordinator to match custom converters. Defaults to esphome.name
+* **manufacturer** (Optional, string): Zigbee Manufacturer Name in basic cluster. Used by coordinator to match custom converters. Defaults to "esphome"
+* **date** (Optional, string): Date Code in basic cluster. Defaults to build time
+* **power_supply** (Optional, int): Zigbee Power Source in basic cluster. See ZCL. Defaults to 0 = unknown
+* **version** (Optional, int): Zigbee App Version in basic cluster. Defaults to 0
+* **area** (Optional, int): Zigbee Physical Environment in basic cluster. See ZCL. Defaults to 0 = unknown
+* **router** (Optional, bool): Create a router device instead of an end device. Defaults to false
+* **endpoints** (Optional, list): endpoint list. See examples
+
 [Todo]
 
 Example:
@@ -109,9 +120,11 @@ zigbee:
 * zigbee.setAttr
   * id: "id of attribute"
   * value: "value, can be a lambda"
-    * only numeric types
+    * only numeric or string types
 * zigbee.report: "id of zigbee component"
-  * Manually send reports
+  * Manually send reports for all attributes with report=true
+* zigbee.reportAttr: "id of zigbee_attribute component"
+  * Manually send report for attribute
 * zigbee.reset: "id of zigbee component"
   * Reset Zigbee Network and Device. Leave the current network and tries to join open networks.
 
