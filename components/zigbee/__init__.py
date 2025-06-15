@@ -3,6 +3,7 @@ import re
 
 from esphome import automation
 import esphome.codegen as cg
+from esphome.components import binary_sensor, sensor, text_sensor
 from esphome.components.esp32 import (
     CONF_PARTITIONS,
     # add_extra_build_file,
@@ -241,8 +242,12 @@ CONFIG_SCHEMA = cv.All(
                                                         ),
                                                     }
                                                 ),
-                                                cv.Optional(CONF_DEVICE): cv.use_id(
-                                                    cg.EntityBase
+                                                cv.Optional(CONF_DEVICE): cv.Any(
+                                                    cv.use_id(sensor.Sensor),
+                                                    cv.use_id(
+                                                        binary_sensor.BinarySensor
+                                                    ),
+                                                    cv.use_id(text_sensor.TextSensor),
                                                 ),
                                                 cv.Optional(
                                                     CONF_SCALE, default=1.0
@@ -289,6 +294,75 @@ def find_attr(conf, id):
                 if attr[CONF_ID] == id:
                     return attr
     raise EsphomeError(f"Zigbee: Cannot find attribute {id}.")
+
+
+async def attributes_to_code(var, ep_num, cl):
+    for attr in cl[CONF_ATTRIBUTES]:
+        attr_var = cg.new_Pvariable(
+            attr[CONF_ID],
+            var,
+            ep_num,
+            cl[CONF_ID],
+            cl[CONF_ROLE],
+            attr[CONF_ATTRIBUTE_ID],
+            attr[CONF_TYPE],
+            attr[CONF_SCALE],
+        )
+        await cg.register_component(attr_var, attr)
+
+        cg.add(
+            attr_var.add_attr(
+                attr[CONF_ACCESS],
+                attr.get(CONF_MAX_LENGTH, 0),
+                attr[CONF_VALUE],
+            )
+        )
+        if attr[CONF_REPORT]:
+            cg.add(attr_var.set_report(attr[CONF_REPORT] == "force"))
+
+        if CONF_LAMBDA in attr:
+            lambda_ = await cg.process_lambda(
+                attr[CONF_LAMBDA],
+                [(cg.float_, "x")],
+                return_type=get_c_type(attr[CONF_TYPE]),
+            )
+
+        if CONF_DEVICE in attr:
+            device = await cg.get_variable(attr[CONF_DEVICE])
+            template_arg = cg.TemplateArguments(get_c_type(attr[CONF_TYPE]))
+            if CONF_LAMBDA in attr:
+                if attr[CONF_DEVICE].type == sensor.Sensor:
+                    lambda_ = await cg.process_lambda(
+                        attr[CONF_LAMBDA],
+                        [(cg.float_, "x")],
+                        return_type=get_c_type(attr[CONF_TYPE]),
+                    )
+                elif attr[CONF_DEVICE].type == binary_sensor.BinarySensor:
+                    lambda_ = await cg.process_lambda(
+                        attr[CONF_LAMBDA],
+                        [(cg.bool_, "x")],
+                        return_type=get_c_type(attr[CONF_TYPE]),
+                    )
+                elif attr[CONF_DEVICE].type == text_sensor.TextSensor:
+                    lambda_ = await cg.process_lambda(
+                        attr[CONF_LAMBDA],
+                        [(cg.std_string, "x")],
+                        return_type=get_c_type(attr[CONF_TYPE]),
+                    )
+                cg.add(attr_var.connect(template_arg, device, lambda_))
+            else:
+                cg.add(attr_var.connect(template_arg, device))
+
+        for conf in attr.get(CONF_ON_VALUE, []):
+            trigger = cg.new_Pvariable(
+                conf[CONF_TRIGGER_ID],
+                cg.TemplateArguments(get_c_type(attr[CONF_TYPE])),
+                attr_var,
+            )
+            await cg.register_component(trigger, conf)
+            await automation.build_automation(
+                trigger, [(get_c_type(attr[CONF_TYPE]), "x")], conf
+            )
 
 
 async def to_code(config):
@@ -360,59 +434,8 @@ async def to_code(config):
                     cl[CONF_ROLE],
                 )
             )
-            for attr in cl[CONF_ATTRIBUTES]:
-                attr_var = cg.new_Pvariable(
-                    attr[CONF_ID],
-                    var,
-                    ep[CONF_NUM],
-                    cl[CONF_ID],
-                    cl[CONF_ROLE],
-                    attr[CONF_ATTRIBUTE_ID],
-                    attr[CONF_TYPE],
-                    attr[CONF_SCALE],
-                )
-                await cg.register_component(attr_var, attr)
+            await attributes_to_code(var, ep[CONF_NUM], cl)
 
-                cg.add(
-                    attr_var.add_attr(
-                        attr[CONF_ACCESS],
-                        attr.get(CONF_MAX_LENGTH, 0),
-                        attr[CONF_VALUE],
-                    )
-                )
-                if attr[CONF_REPORT]:
-                    cg.add(attr_var.set_report(attr[CONF_REPORT] == "force"))
-
-                if CONF_LAMBDA in attr:
-                    lambda_ = await cg.process_lambda(
-                        attr[CONF_LAMBDA],
-                        [(cg.float_, "x")],
-                        return_type=get_c_type(attr[CONF_TYPE]),
-                    )
-
-                if CONF_DEVICE in attr:
-                    device = await cg.get_variable(attr[CONF_DEVICE])
-                    template_arg = cg.TemplateArguments(get_c_type(attr[CONF_TYPE]))
-                    if CONF_LAMBDA in attr:
-                        lambda_ = await cg.process_lambda(
-                            attr[CONF_LAMBDA],
-                            [(cg.float_, "x")],
-                            return_type=get_c_type(attr[CONF_TYPE]),
-                        )
-                        cg.add(attr_var.connect(template_arg, device, lambda_))
-                    else:
-                        cg.add(attr_var.connect(template_arg, device))
-
-                for conf in attr.get(CONF_ON_VALUE, []):
-                    trigger = cg.new_Pvariable(
-                        conf[CONF_TRIGGER_ID],
-                        cg.TemplateArguments(get_c_type(attr[CONF_TYPE])),
-                        attr_var,
-                    )
-                    await cg.register_component(trigger, conf)
-                    await automation.build_automation(
-                        trigger, [(get_c_type(attr[CONF_TYPE]), "x")], conf
-                    )
     for conf in config.get(CONF_ON_JOIN, []):
         trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
         await automation.build_automation(trigger, [], conf)

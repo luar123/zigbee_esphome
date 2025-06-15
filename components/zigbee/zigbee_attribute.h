@@ -12,6 +12,9 @@
 #ifdef USE_BINARY_SENSOR
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #endif
+#ifdef USE_TEXT_SENSOR
+#include "esphome/components/text_sensor/text_sensor.h"
+#endif
 
 namespace esphome {
 namespace zigbee {
@@ -49,6 +52,10 @@ class ZigBeeAttribute : public Component {
 #ifdef USE_BINARY_SENSOR
   template<typename T> void connect(binary_sensor::BinarySensor *sensor);
   template<typename T> void connect(binary_sensor::BinarySensor *sensor, std::function<T(bool)> &&f);
+#endif
+#ifdef USE_TEXT_SENSOR
+  template<typename T> void connect(text_sensor::TextSensor *sensor);
+  template<typename T> void connect(text_sensor::TextSensor *sensor, std::function<T(std::string)> &&f);
 #endif
 
  protected:
@@ -119,6 +126,16 @@ template<typename T> void ZigBeeAttribute::connect(binary_sensor::BinarySensor *
 
 template<typename T> void ZigBeeAttribute::connect(binary_sensor::BinarySensor *sensor, std::function<T(bool)> &&f) {
   sensor->add_on_state_callback([=, this](bool value) { this->set_attr(f(value)); });
+}
+#endif
+
+#ifdef USE_TEXT_SENSOR
+template<typename T> void ZigBeeAttribute::connect(text_sensor::TextSensor *sensor) {
+  sensor->add_on_state_callback([=, this](std::string value) { this->set_attr((T) (value)); });
+}
+
+template<typename T> void ZigBeeAttribute::connect(text_sensor::TextSensor *sensor, std::function<T(std::string)> &&f) {
+  sensor->add_on_state_callback([=, this](std::string value) { this->set_attr(f(value)); });
 }
 #endif
 
