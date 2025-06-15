@@ -10,6 +10,9 @@ void ZigBeeAttribute::set_attr_() {
   if (esp_zb_lock_acquire(20 / portTICK_PERIOD_MS)) {
     esp_zb_zcl_status_t state = esp_zb_zcl_set_attribute_val(this->endpoint_id_, this->cluster_id_, this->role_,
                                                              this->attr_id_, this->value_p, false);
+    if (this->force_report_) {
+      this->report_(true);
+    }
     this->set_attr_requested_ = false;
     // Check for error
     if (state != ESP_ZB_ZCL_STATUS_SUCCESS) {
@@ -20,11 +23,13 @@ void ZigBeeAttribute::set_attr_() {
   }
 }
 
-void ZigBeeAttribute::report_() {
+void ZigBeeAttribute::report_() { this->report_(false); }
+
+void ZigBeeAttribute::report_(bool has_lock) {
   if (!this->zb_->is_started()) {
     return;
   }
-  if (esp_zb_lock_acquire(20 / portTICK_PERIOD_MS)) {
+  if (has_lock or esp_zb_lock_acquire(20 / portTICK_PERIOD_MS)) {
     esp_zb_zcl_report_attr_cmd_t cmd = {
         .address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT,
         .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_CLI,
@@ -39,11 +44,13 @@ void ZigBeeAttribute::report_() {
     // cmd.cluster_role = reporting_info.cluster_role;
     esp_zb_zcl_report_attr_cmd_req(&cmd);
     this->report_requested_ = false;
-    esp_zb_lock_release();
+    if (!has_lock) {
+      esp_zb_lock_release();
+    }
   }
 }
 
-void ZigBeeAttribute::set_report() {
+void ZigBeeAttribute::set_report(bool force) {
   esp_zb_zcl_reporting_info_t reporting_info = {
       .direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV,
       .ep = this->endpoint_id_,
@@ -63,6 +70,7 @@ void ZigBeeAttribute::set_report() {
   reporting_info.u.send_info.delta.s16 = 0;         /*!< Actual reportable change */
 
   this->zb_->set_report(this, reporting_info);
+  this->force_report_ = force;
 }
 
 void ZigBeeAttribute::report() { this->report_requested_ = true; }

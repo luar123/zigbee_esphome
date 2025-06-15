@@ -226,7 +226,10 @@ CONFIG_SCHEMA = cv.All(
                                                 cv.Optional(CONF_VALUE): cv.valid,
                                                 cv.Optional(
                                                     CONF_REPORT, default=False
-                                                ): cv.boolean,
+                                                ): cv.Any(
+                                                    cv.boolean,
+                                                    cv.one_of("force", lower=True),
+                                                ),
                                                 cv.Optional(
                                                     CONF_ON_VALUE
                                                 ): automation.validate_automation(
@@ -378,7 +381,7 @@ async def to_code(config):
                     )
                 )
                 if attr[CONF_REPORT]:
-                    cg.add(attr_var.set_report())
+                    cg.add(attr_var.set_report(attr[CONF_REPORT] == "force"))
 
                 if CONF_LAMBDA in attr:
                     lambda_ = await cg.process_lambda(
