@@ -60,7 +60,6 @@ class ZigbeeTime;
 class ZigBeeComponent : public Component {
  public:
   void setup() override;
-  void loop() override;
   void dump_config() override;
   esp_err_t create_endpoint(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id);
   void set_ident_time(uint8_t ident_time);
@@ -74,7 +73,7 @@ class ZigBeeComponent : public Component {
   void add_attr(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
                 uint8_t attr_type, uint8_t attr_access, uint8_t max_size, T value);
 
-  void set_report(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id);
+  void set_report(ZigBeeAttribute *attribute, esp_zb_zcl_reporting_info_t reporting_info);
   void handle_attribute(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute);
   void searchBindings();
   static void bindingTableCb(const esp_zb_zdo_binding_table_info_t *table_info, void *user_ctx);
@@ -97,16 +96,14 @@ class ZigBeeComponent : public Component {
   bool started = false;
 
   CallbackManager<void()> on_join_callback_{};
-  std::deque<esp_zb_zcl_reporting_info_t> reporting_list;
+  std::deque<std::tuple<ZigBeeAttribute *, esp_zb_zcl_reporting_info_t>> reporting_list;
 
  protected:
-  void send_report_();
   esp_zb_attribute_list_t *create_ident_cluster_();
   esp_zb_attribute_list_t *create_basic_cluster_();
   template<typename T>
   void add_attr_(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
                  uint8_t attr_type, uint8_t attr_access, T *value_p);
-  bool report_ = false;
   std::map<uint8_t, esp_zb_ha_standard_devices_t> endpoint_list_;
   std::map<uint8_t, esp_zb_cluster_list_t *> cluster_list_;
   std::map<std::tuple<uint8_t, uint16_t, uint8_t>, esp_zb_attribute_list_t *> attribute_list_;

@@ -65,6 +65,9 @@ ResetZigbeeAction = zigbee_ns.class_(
     "ResetZigbeeAction", automation.Action, cg.Parented.template(ZigBeeComponent)
 )
 SetAttrAction = zigbee_ns.class_("SetAttrAction", automation.Action)
+ReportAttrAction = zigbee_ns.class_(
+    "ReportAttrAction", automation.Action, cg.Parented.template(ZigBeeAttribute)
+)
 ReportAction = zigbee_ns.class_(
     "ReportAction", automation.Action, cg.Parented.template(ZigBeeComponent)
 )
@@ -223,7 +226,10 @@ CONFIG_SCHEMA = cv.All(
                                                 cv.Optional(CONF_VALUE): cv.valid,
                                                 cv.Optional(
                                                     CONF_REPORT, default=False
-                                                ): cv.boolean,
+                                                ): cv.Any(
+                                                    cv.boolean,
+                                                    cv.one_of("force", lower=True),
+                                                ),
                                                 cv.Optional(
                                                     CONF_ON_VALUE
                                                 ): automation.validate_automation(
@@ -375,7 +381,7 @@ async def to_code(config):
                     )
                 )
                 if attr[CONF_REPORT]:
-                    cg.add(attr_var.set_report())
+                    cg.add(attr_var.set_report(attr[CONF_REPORT] == "force"))
 
                 if CONF_LAMBDA in attr:
                     lambda_ = await cg.process_lambda(
@@ -473,4 +479,15 @@ async def zigbee_set_attr_to_code(config, action_id, template_arg, args):
     )
     cg.add(var.set_value(template_))
 
+    return var
+
+
+@automation.register_action(
+    "zigbee.reportAttr",
+    ReportAttrAction,
+    automation.maybe_simple_id(ZIGBEE_ATTRIBUTE_ACTION_SCHEMA),
+)
+async def zigbee_report_attr_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
     return var
