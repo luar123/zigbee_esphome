@@ -243,12 +243,8 @@ CONFIG_SCHEMA = cv.All(
                                                         ),
                                                     }
                                                 ),
-                                                cv.Optional(CONF_DEVICE): cv.Any(
-                                                    cv.use_id(sensor.Sensor),
-                                                    cv.use_id(
-                                                        binary_sensor.BinarySensor
-                                                    ),
-                                                    cv.use_id(text_sensor.TextSensor),
+                                                cv.Optional(CONF_DEVICE): cv.use_id(
+                                                    cg.EntityBase
                                                 ),
                                                 cv.Optional(
                                                     CONF_SCALE, default=1.0
@@ -297,7 +293,7 @@ def find_attr(conf, id):
 
 
 async def attributes_to_code(var, ep_num, cl):
-    for attr in cl[CONF_ATTRIBUTES]:
+    for attr in cl.get(CONF_ATTRIBUTES, []):
         attr_var = cg.new_Pvariable(
             attr[CONF_ID],
             var,
@@ -426,7 +422,7 @@ async def to_code(config):
                     CLUSTER_ROLE["SERVER"],
                 )
             )
-        for cl in ep[CONF_CLUSTERS]:
+        for cl in ep.get(CONF_CLUSTERS, []):
             cg.add(
                 var.add_cluster(
                     ep[CONF_NUM],
