@@ -327,19 +327,19 @@ async def attributes_to_code(var, ep_num, cl):
             device = await cg.get_variable(attr[CONF_DEVICE])
             template_arg = cg.TemplateArguments(get_c_type(attr[CONF_TYPE]))
             if CONF_LAMBDA in attr:
-                if attr[CONF_DEVICE].type == sensor.Sensor:
+                if device.base.type.inherits_from(sensor.Sensor):
                     lambda_ = await cg.process_lambda(
                         attr[CONF_LAMBDA],
                         [(cg.float_, "x")],
                         return_type=get_c_type(attr[CONF_TYPE]),
                     )
-                elif attr[CONF_DEVICE].type == binary_sensor.BinarySensor:
+                elif device.base.type.inherits_from(binary_sensor.BinarySensor):
                     lambda_ = await cg.process_lambda(
                         attr[CONF_LAMBDA],
                         [(cg.bool_, "x")],
                         return_type=get_c_type(attr[CONF_TYPE]),
                     )
-                elif attr[CONF_DEVICE].type == text_sensor.TextSensor:
+                elif device.base.type.inherits_from(text_sensor.TextSensor):
                     lambda_ = await cg.process_lambda(
                         attr[CONF_LAMBDA],
                         [(cg.std_string, "x")],
