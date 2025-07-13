@@ -362,22 +362,13 @@ async def attributes_to_code(var, ep_num, cl):
 
 
 async def to_code(config):
-    # use component manager:
-    # add_extra_build_file(
-    #    "src/idf_component.yml",
-    #    os.path.join(os.path.dirname(__file__), "idf_component.yml"),
-    # )
-    # use add_idf_component: v1.5.1
     add_idf_component(
-        name="espressif__esp-zboss-lib",
-        repo="https://github.com/espressif/esp-zboss-lib.git",
-        ref="354f742fab22cdb12b4ae61a103a7b438c7c975f",
+        name="espressif/esp-zboss-lib",
+        ref="1.6.1",
     )
     add_idf_component(
-        name="esp-zigbee-lib",
-        repo="https://github.com/espressif/esp-zigbee-sdk.git",
-        path="components/esp-zigbee-lib",
-        ref="df56883084e89ebabf8a4985f92a023bd816a1b5",
+        name="espressif/esp-zigbee-lib",
+        ref="1.6.1",
     )
     add_idf_sdkconfig_option("CONFIG_ZB_ENABLED", True)
     if config.get(CONF_ROUTER):
