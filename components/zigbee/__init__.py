@@ -364,11 +364,11 @@ async def attributes_to_code(var, ep_num, cl):
 async def to_code(config):
     add_idf_component(
         name="espressif/esp-zboss-lib",
-        ref="1.6.1",
+        ref="1.6.4",
     )
     add_idf_component(
         name="espressif/esp-zigbee-lib",
-        ref="1.6.1",
+        ref="1.6.5",
     )
     add_idf_sdkconfig_option("CONFIG_ZB_ENABLED", True)
     if config.get(CONF_ROUTER):
