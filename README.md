@@ -1,3 +1,6 @@
+> [!WARNING]
+> **With the latest commit and esphome 2025.7 a different way of loading the zigbee sdk libs is used. Therefore it is recommended to delete the `.esphome/build/<name>/` folder.**
+
 > [!Important]
 > **Please help to collect working cluster definitions [here](https://github.com/luar123/zigbee_esphome/discussions/22).**
 >  
@@ -30,7 +33,7 @@ External ZigBee component for ESPHome.
 * Reporting can be enabled, but not configured
 * No control devices like switches ([workaround](https://github.com/luar123/zigbee_esphome/discussions/18#discussioncomment-11875376))
 * Needs esp-idf >=5.1.4
-* Needs esphome >=2024.12
+* Needs esphome >=2025.7
 * scenes not implemented
 
 ### ToDo List (Short-Mid term)
