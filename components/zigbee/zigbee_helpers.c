@@ -144,6 +144,15 @@ esp_err_t esphome_zb_cluster_list_add_or_update_cluster(uint16_t cluster_id, esp
       case ESP_ZB_ZCL_CLUSTER_ID_BINARY_INPUT:
         ret = esp_zb_cluster_list_add_binary_input_cluster(cluster_list, attr_list, role_mask);
         break;
+      case ESP_ZB_ZCL_CLUSTER_ID_BINARY_OUTPUT:
+        ret = esp_zb_cluster_list_add_binary_output_cluster(cluster_list, attr_list, role_mask);
+        break;
+      case ESP_ZB_ZCL_CLUSTER_ID_BINARY_VALUE:
+        ret = esp_zb_cluster_list_add_binary_value_cluster(cluster_list, attr_list, role_mask);
+        break;
+      case ESP_ZB_ZCL_CLUSTER_ID_MULTI_OUTPUT:
+        ret = esp_zb_cluster_list_add_multistate_output_cluster(cluster_list, attr_list, role_mask);
+        break;
       case ESP_ZB_ZCL_CLUSTER_ID_MULTI_VALUE:
         ret = esp_zb_cluster_list_add_multistate_value_cluster(cluster_list, attr_list, role_mask);
         break;
@@ -152,6 +161,9 @@ esp_err_t esphome_zb_cluster_list_add_or_update_cluster(uint16_t cluster_id, esp
         break;
       case ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE:
         ret = esp_zb_cluster_list_add_ota_cluster(cluster_list, attr_list, role_mask);
+        break;
+      case ESP_ZB_ZCL_CLUSTER_ID_POLL_CONTROL:
+        ret = esp_zb_cluster_list_add_poll_control_cluster(cluster_list, attr_list, role_mask);
         break;
       case ESP_ZB_ZCL_CLUSTER_ID_SHADE_CONFIG:
         ret = esp_zb_cluster_list_add_shade_config_cluster(cluster_list, attr_list, role_mask);
@@ -272,12 +284,22 @@ esp_zb_attribute_list_t *esphome_zb_default_attr_list_create(uint16_t cluster_id
       return esp_zb_analog_value_cluster_create(NULL);
     case ESP_ZB_ZCL_CLUSTER_ID_BINARY_INPUT:
       return esp_zb_binary_input_cluster_create(NULL);
+    case ESP_ZB_ZCL_CLUSTER_ID_BINARY_OUTPUT:
+      return esp_zb_binary_output_cluster_create(NULL);
+    case ESP_ZB_ZCL_CLUSTER_ID_BINARY_VALUE:
+      return esp_zb_binary_value_cluster_create(NULL);
+    case ESP_ZB_ZCL_CLUSTER_ID_MULTI_INPUT:
+      return esp_zb_multistate_input_cluster_create(NULL);
+    case ESP_ZB_ZCL_CLUSTER_ID_MULTI_OUTPUT:
+      return esp_zb_multistate_output_cluster_create(NULL);
     case ESP_ZB_ZCL_CLUSTER_ID_MULTI_VALUE:
       return esp_zb_multistate_value_cluster_create(NULL);
     case ESP_ZB_ZCL_CLUSTER_ID_COMMISSIONING:
       return esp_zb_commissioning_cluster_create(NULL);
     case ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE:
       return esp_zb_ota_cluster_create(NULL);
+    case ESP_ZB_ZCL_CLUSTER_ID_POLL_CONTROL:
+      return esp_zb_poll_control_cluster_create(NULL);
     case ESP_ZB_ZCL_CLUSTER_ID_SHADE_CONFIG:
       return esp_zb_shade_config_cluster_create(NULL);
     case ESP_ZB_ZCL_CLUSTER_ID_DOOR_LOCK:
@@ -368,12 +390,22 @@ esp_err_t esphome_zb_cluster_add_attr(uint16_t cluster_id, esp_zb_attribute_list
       return esp_zb_analog_value_cluster_add_attr(attr_list, attr_id, value_p);
     case ESP_ZB_ZCL_CLUSTER_ID_BINARY_INPUT:
       return esp_zb_binary_input_cluster_add_attr(attr_list, attr_id, value_p);
+    case ESP_ZB_ZCL_CLUSTER_ID_BINARY_OUTPUT:
+      return esp_zb_binary_output_cluster_add_attr(attr_list, attr_id, value_p);
+    case ESP_ZB_ZCL_CLUSTER_ID_BINARY_VALUE:
+      return esp_zb_binary_value_cluster_add_attr(attr_list, attr_id, value_p);
+    case ESP_ZB_ZCL_CLUSTER_ID_MULTI_INPUT:
+      return esp_zb_multistate_input_cluster_add_attr(attr_list, attr_id, value_p);
+    case ESP_ZB_ZCL_CLUSTER_ID_MULTI_OUTPUT:
+      return esp_zb_multistate_output_cluster_add_attr(attr_list, attr_id, value_p);
     case ESP_ZB_ZCL_CLUSTER_ID_MULTI_VALUE:
       return esp_zb_multistate_value_cluster_add_attr(attr_list, attr_id, value_p);
     case ESP_ZB_ZCL_CLUSTER_ID_COMMISSIONING:
       return esp_zb_commissioning_cluster_add_attr(attr_list, attr_id, value_p);
     case ESP_ZB_ZCL_CLUSTER_ID_OTA_UPGRADE:
       return esp_zb_ota_cluster_add_attr(attr_list, attr_id, value_p);
+    case ESP_ZB_ZCL_CLUSTER_ID_POLL_CONTROL:
+      return esp_zb_poll_control_cluster_add_attr(attr_list, attr_id, value_p);
     case ESP_ZB_ZCL_CLUSTER_ID_SHADE_CONFIG:
       return esp_zb_shade_config_cluster_add_attr(attr_list, attr_id, value_p);
     case ESP_ZB_ZCL_CLUSTER_ID_DOOR_LOCK:
