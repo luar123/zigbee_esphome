@@ -372,8 +372,13 @@ static void esp_zb_task_(void *pvParameters) {
     // this->mark_failed();
     vTaskDelete(NULL);
   }
-  if (*(bool *) pvParameters) {
-    zb_set_ed_node_descriptor(0, 1, 1);  // workaround, rx_on_when_idle should be 0 for battery powered devices.
+
+  if ((zigbeeC->device_role_ == ESP_ZB_DEVICE_TYPE_ED) && (zigbeeC->basic_cluster_data_.power == 0x03)) {
+    ESP_LOGD(TAG, "Battery powered!");
+    // zb_set_ed_node_descriptor(0, 1, 1);  // workaround, rx_on_when_idle should be 0 for battery powered devices.
+    esp_zb_set_node_descriptor_power_source(0);
+  } else {
+    esp_zb_set_node_descriptor_power_source(1);
   }
   esp_zb_stack_main_loop();
 }
@@ -458,13 +463,7 @@ void ZigBeeComponent::setup() {
                reporting_info.attr_id, reporting_info.cluster_id, reporting_info.ep);
     }
   }
-  bool batterypowered = new bool;
-  if ((this->device_role_ == ESP_ZB_DEVICE_TYPE_ED) && this->basic_cluster_data_.power == 0x03) {
-    batterypowered = true;
-  } else {
-    batterypowered = false;
-  }
-  xTaskCreate(esp_zb_task_, "Zigbee_main", 4096, &batterypowered, 24, NULL);
+  xTaskCreate(esp_zb_task_, "Zigbee_main", 4096, NULL, 24, NULL);
 }
 
 void ZigBeeComponent::dump_config() {

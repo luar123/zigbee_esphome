@@ -97,23 +97,6 @@ class ZigBeeComponent : public Component {
 
   CallbackManager<void()> on_join_callback_{};
   std::deque<std::tuple<ZigBeeAttribute *, esp_zb_zcl_reporting_info_t>> reporting_list;
-
- protected:
-  esp_zb_attribute_list_t *create_ident_cluster_();
-  esp_zb_attribute_list_t *create_basic_cluster_();
-  template<typename T>
-  void add_attr_(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
-                 uint8_t attr_type, uint8_t attr_access, T *value_p);
-  std::map<uint8_t, esp_zb_ha_standard_devices_t> endpoint_list_;
-  std::map<uint8_t, esp_zb_cluster_list_t *> cluster_list_;
-  std::map<std::tuple<uint8_t, uint16_t, uint8_t>, esp_zb_attribute_list_t *> attribute_list_;
-  std::map<std::tuple<uint8_t, uint16_t, uint8_t, uint16_t>, ZigBeeAttribute *> attributes_;
-#ifdef ZB_ED_ROLE
-  esp_zb_nwk_device_type_t device_role_ = ESP_ZB_DEVICE_TYPE_ED;
-#else
-  esp_zb_nwk_device_type_t device_role_ = ESP_ZB_DEVICE_TYPE_ROUTER;
-#endif
-  esp_zb_ep_list_t *esp_zb_ep_list_ = esp_zb_ep_list_create();
   struct {
     std::string model;
     std::string manufacturer;
@@ -125,6 +108,23 @@ class ZigBeeComponent : public Component {
     std::string area;
     uint8_t physical_env;
   } basic_cluster_data_;
+#ifdef ZB_ED_ROLE
+  esp_zb_nwk_device_type_t device_role_ = ESP_ZB_DEVICE_TYPE_ED;
+#else
+  esp_zb_nwk_device_type_t device_role_ = ESP_ZB_DEVICE_TYPE_ROUTER;
+#endif
+
+ protected:
+  esp_zb_attribute_list_t *create_ident_cluster_();
+  esp_zb_attribute_list_t *create_basic_cluster_();
+  template<typename T>
+  void add_attr_(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
+                 uint8_t attr_type, uint8_t attr_access, T *value_p);
+  std::map<uint8_t, esp_zb_ha_standard_devices_t> endpoint_list_;
+  std::map<uint8_t, esp_zb_cluster_list_t *> cluster_list_;
+  std::map<std::tuple<uint8_t, uint16_t, uint8_t>, esp_zb_attribute_list_t *> attribute_list_;
+  std::map<std::tuple<uint8_t, uint16_t, uint8_t, uint16_t>, ZigBeeAttribute *> attributes_;
+  esp_zb_ep_list_t *esp_zb_ep_list_ = esp_zb_ep_list_create();
   uint8_t ident_time_;
 };
 
