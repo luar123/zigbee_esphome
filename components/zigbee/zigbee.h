@@ -9,6 +9,7 @@
 #include "ha/esp_zigbee_ha_standard.h"
 #include "esphome/core/component.h"
 #include "esphome/core/automation.h"
+#include "esphome/core/log.h"
 #include "zigbee_helpers.h"
 
 #ifdef USE_ZIGBEE_TIME

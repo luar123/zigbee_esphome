@@ -1,7 +1,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_check.h"
-#include "esp_log.h"
 #include "nvs_flash.h"
 #include "zigbee_attribute.h"
 #include "zigbee.h"

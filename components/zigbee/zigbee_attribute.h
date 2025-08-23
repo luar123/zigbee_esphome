@@ -5,6 +5,7 @@
 #include "esp_zigbee_core.h"
 #include "esphome/core/component.h"
 #include "esphome/core/automation.h"
+#include "esphome/core/log.h"
 #include "zigbee.h"
 #ifdef USE_SENSOR
 #include "esphome/components/sensor/sensor.h"
@@ -107,6 +108,7 @@ template<typename T> void ZigBeeAttribute::set_attr(const T &value) {
     this->value_p = (void *) value_p;
   }
   this->set_attr_requested_ = true;
+  this->enable_loop();
 }
 
 #ifdef USE_SENSOR

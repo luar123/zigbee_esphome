@@ -73,7 +73,10 @@ void ZigBeeAttribute::set_report(bool force) {
   this->force_report_ = force;
 }
 
-void ZigBeeAttribute::report() { this->report_requested_ = true; }
+void ZigBeeAttribute::report() {
+  this->report_requested_ = true;
+  this->enable_loop();
+}
 
 void ZigBeeAttribute::loop() {
   if (this->set_attr_requested_) {
@@ -82,6 +85,10 @@ void ZigBeeAttribute::loop() {
 
   if (this->report_requested_) {
     this->report_();
+  }
+
+  if (!this->report_requested_ && !this->set_attr_requested_) {
+    this->disable_loop();
   }
 }
 
