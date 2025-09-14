@@ -59,6 +59,22 @@ template<typename Ts> class ZigBeeOnValueTrigger : public Trigger<Ts>, public Co
   ZigBeeAttribute *parent_;
 };
 
+template<typename Ts> class ZigBeeOnReportTrigger : public Trigger<Ts>, public Component {
+ public:
+  explicit ZigBeeOnReportTrigger(ZigBeeAttribute *parent) : parent_(parent) {}
+  void setup() override {
+    this->parent_->add_on_report_callback([this](esp_zb_zcl_attribute_t attribute) { this->on_report_(attribute); });
+  }
+
+ protected:
+  void on_report_(esp_zb_zcl_attribute_t attribute) {
+    if (attribute.data.type == parent_->attr_type() && attribute.data.value) {
+      this->trigger(get_value_by_type<Ts>(parent_->attr_type(), attribute.data.value));
+    }
+  }
+  ZigBeeAttribute *parent_;
+};
+
 template<class T> T get_value_by_type(uint8_t attr_type, void *data) {
   switch (attr_type) {
     case ESP_ZB_ZCL_ATTR_TYPE_SEMI:

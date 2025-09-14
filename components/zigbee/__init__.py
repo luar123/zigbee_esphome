@@ -54,6 +54,7 @@ CONF_SCALE = "scale"
 CONF_ATTRIBUTE_ID = "attribute_id"
 CONF_ZIGBEE_ID = "zigbee_id"
 CONF_ROUTER = "router"
+CONF_ON_REPORT = "on_report"
 
 zigbee_ns = cg.esphome_ns.namespace("zigbee")
 ZigBeeComponent = zigbee_ns.class_("ZigBeeComponent", cg.Component)
@@ -61,6 +62,9 @@ ZigBeeAttribute = zigbee_ns.class_("ZigBeeAttribute", cg.Component)
 ZigBeeJoinTrigger = zigbee_ns.class_("ZigBeeJoinTrigger", automation.Trigger)
 ZigBeeOnValueTrigger = zigbee_ns.class_(
     "ZigBeeOnValueTrigger", automation.Trigger.template(int), cg.Component
+)
+ZigBeeOnReportTrigger = zigbee_ns.class_(
+    "ZigBeeOnReportTrigger", automation.Trigger.template(int), cg.Component
 )
 ResetZigbeeAction = zigbee_ns.class_(
     "ResetZigbeeAction", automation.Action, cg.Parented.template(ZigBeeComponent)
@@ -255,6 +259,17 @@ CONFIG_SCHEMA = cv.All(
                                                 cv.Optional(
                                                     CONF_MAX_LENGTH
                                                 ): cv.int_range(0, 254),
+                                                cv.Optional(
+                                                    CONF_ON_REPORT
+                                                ): automation.validate_automation(
+                                                    {
+                                                        cv.GenerateID(
+                                                            CONF_TRIGGER_ID
+                                                        ): cv.declare_id(
+                                                            ZigBeeOnReportTrigger
+                                                        ),
+                                                    }
+                                                ),
                                             }
                                         ),
                                         validate_attributes,
@@ -350,6 +365,17 @@ async def attributes_to_code(var, ep_num, cl):
                 cg.add(attr_var.connect(template_arg, device))
 
         for conf in attr.get(CONF_ON_VALUE, []):
+            trigger = cg.new_Pvariable(
+                conf[CONF_TRIGGER_ID],
+                cg.TemplateArguments(get_c_type(attr[CONF_TYPE])),
+                attr_var,
+            )
+            await cg.register_component(trigger, conf)
+            await automation.build_automation(
+                trigger, [(get_c_type(attr[CONF_TYPE]), "x")], conf
+            )
+
+        for conf in attr.get(CONF_ON_REPORT, []):
             trigger = cg.new_Pvariable(
                 conf[CONF_TRIGGER_ID],
                 cg.TemplateArguments(get_c_type(attr[CONF_TYPE])),
