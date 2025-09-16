@@ -251,17 +251,7 @@ static esp_err_t zb_report_attribute_handler(const esp_zb_zcl_report_attr_messag
   ESP_RETURN_ON_FALSE(message, ESP_FAIL, TAG, "Empty message");
   ESP_RETURN_ON_FALSE(message->status == ESP_ZB_ZCL_STATUS_SUCCESS, ESP_ERR_INVALID_ARG, TAG,
                       "Received message: error status(%d)", message->status);
-  // typedef struct esp_zb_zcl_report_attr_message_s {
-  //   esp_zb_zcl_status_t status;       /*!< The status of the report attribute response, which can refer to esp_zb_zcl_status_t */
-  //   esp_zb_zcl_addr_t src_address;    /*!< The struct of address contains short and ieee address, which can refer to esp_zb_zcl_addr_s */
-  //   uint8_t src_endpoint;             /*!< The endpoint id which comes from report device */
-  //   uint8_t dst_endpoint;             /*!< The destination endpoint id */
-  //   uint16_t cluster;                 /*!< The cluster id that reported */
-  //   esp_zb_zcl_attribute_t attribute; /*!< The attribute entry of report response */
-  // } esp_zb_zcl_report_attr_message_t;
-  ESP_LOGD(TAG, "Received message: endpoint(%d), cluster(0x%x), attribute(0x%x), data size(%d)",
-           message->dst_endpoint, message->cluster, message->attribute.id, message->attribute.data.size);
-  zigbeeC->handle_report_attribute(message->dst_endpoint, message->cluster, message->attribute);
+  zigbeeC->handle_report_attribute(message->dst_endpoint, message->cluster, message->attribute, message->src_address, message->src_endpoint);
   return ret;
 }
 
@@ -295,13 +285,13 @@ void ZigBeeComponent::handle_attribute(esp_zb_device_cb_common_info_t info, esp_
   }
 }
 
-void ZigBeeComponent::handle_report_attribute(uint8_t dst_endpoint, uint16_t cluster, esp_zb_zcl_attribute_t attribute) {
-  ESP_LOGD(TAG, "ols@debug > handle_report_attribute");
-  if (this->attributes_.find({dst_endpoint, cluster, ESP_ZB_ZCL_CLUSTER_CLIENT_ROLE, attribute.id}) != this->attributes_.end()) {
-    ESP_LOGD(TAG, "ols@debug calling on_report");
-    this->attributes_[{dst_endpoint, cluster, ESP_ZB_ZCL_CLUSTER_CLIENT_ROLE, attribute.id}]->on_report(attribute);
+void ZigBeeComponent::handle_report_attribute(uint8_t dst_endpoint, uint16_t cluster, esp_zb_zcl_attribute_t attribute, esp_zb_zcl_addr_t src_address, uint8_t src_endpoint) {
+  auto attr = this->attributes_.find({dst_endpoint, cluster, ESP_ZB_ZCL_CLUSTER_CLIENT_ROLE, attribute.id});
+  if (attr == this->attributes_.end()) {
+    ESP_LOGD(TAG, "No attributes configured for report (endpoint %d; cluster 0x%04x; attribute id 0x%04x)", dst_endpoint, cluster, attribute.id);
+    return;
   }
-  ESP_LOGD(TAG, "ols@debug < handle_report_attribute");
+  attr->second->on_report(attribute, src_address, src_endpoint);
 }
 
 void ZigBeeComponent::create_default_cluster(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id) {

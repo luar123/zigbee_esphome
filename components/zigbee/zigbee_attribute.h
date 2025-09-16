@@ -45,10 +45,10 @@ class ZigBeeAttribute : public Component {
   }
   void on_value(esp_zb_zcl_attribute_t attribute) { this->on_value_callback_.call(attribute); }
 
-  void add_on_report_callback(std::function<void(esp_zb_zcl_attribute_t attribute)> callback) {
+  void add_on_report_callback(std::function<void(esp_zb_zcl_attribute_t attribute, esp_zb_zcl_addr_t src_address, uint8_t src_endpoint)> callback) {
     on_report_callback_.add(std::move(callback));
   }
-  void on_report(esp_zb_zcl_attribute_t attribute) { this->on_report_callback_.call(attribute); }
+  void on_report(esp_zb_zcl_attribute_t attribute, esp_zb_zcl_addr_t src_address, uint8_t src_endpoint) { this->on_report_callback_.call(attribute, src_address, src_endpoint); }
 
 #ifdef USE_SENSOR
   template<typename T> void connect(sensor::Sensor *sensor);
@@ -76,7 +76,7 @@ class ZigBeeAttribute : public Component {
   uint8_t max_size_;
   float scale_;
   CallbackManager<void(esp_zb_zcl_attribute_t attribute)> on_value_callback_{};
-  CallbackManager<void(esp_zb_zcl_attribute_t attribute)> on_report_callback_{};
+  CallbackManager<void(esp_zb_zcl_attribute_t attribute, esp_zb_zcl_addr_t src_address, uint8_t src_endpoint)> on_report_callback_{};
   void *value_p{nullptr};
   bool set_attr_requested_{false};
   bool report_requested_{false};

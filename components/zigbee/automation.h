@@ -2,6 +2,7 @@
 
 //#include <stdfloat> //deactive because not working with esp-idf 5.1.4
 
+#include <cstdint>
 #include "esphome/core/component.h"
 #include "esphome/core/automation.h"
 #include "zigbee_attribute.h"
@@ -59,17 +60,27 @@ template<typename Ts> class ZigBeeOnValueTrigger : public Trigger<Ts>, public Co
   ZigBeeAttribute *parent_;
 };
 
-template<typename Ts> class ZigBeeOnReportTrigger : public Trigger<Ts>, public Component {
+template<typename T> struct zigbee_report_data {
+  T data;
+  esp_zb_zcl_addr_t src_address;
+  uint8_t src_endpoint;
+};
+
+template<typename T> class ZigBeeOnReportTrigger : public Trigger<zigbee_report_data<T>>, public Component {
  public:
   explicit ZigBeeOnReportTrigger(ZigBeeAttribute *parent) : parent_(parent) {}
   void setup() override {
-    this->parent_->add_on_report_callback([this](esp_zb_zcl_attribute_t attribute) { this->on_report_(attribute); });
+    this->parent_->add_on_report_callback([this](esp_zb_zcl_attribute_t attribute, esp_zb_zcl_addr_t src_address, uint8_t src_endpoint) { this->on_report_(attribute, src_address, src_endpoint); });
   }
 
  protected:
-  void on_report_(esp_zb_zcl_attribute_t attribute) {
+  void on_report_(esp_zb_zcl_attribute_t attribute, esp_zb_zcl_addr_t src_address, uint8_t src_endpoint) {
     if (attribute.data.type == parent_->attr_type() && attribute.data.value) {
-      this->trigger(get_value_by_type<Ts>(parent_->attr_type(), attribute.data.value));
+      this->trigger(zigbee_report_data<T>{
+        .data = get_value_by_type<T>(parent_->attr_type(), attribute.data.value),
+        .src_address = src_address,
+        .src_endpoint = src_endpoint,
+      });
     }
   }
   ZigBeeAttribute *parent_;
