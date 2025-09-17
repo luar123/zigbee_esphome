@@ -114,6 +114,24 @@ zigbee:
               value: 100
               device: temp_sensor_id
               scale: 100
+       - id: THERMOSTAT
+         role: "Client"
+         attributes:
+           - attribute_id: 0x0008 # PIHeatingDemand
+             type: U8
+             value: 0
+             on_report:
+               then:
+                 - lambda: |-
+                     ESP_LOGD("main", "Received PIHeatingDemand | address type: 0x%02x; short addr: 0x%04x; ieee addr: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X",
+                              x.src_address.addr_type, x.src_address.u.short_addr,
+                              x.src_address.u.ieee_addr[7], x.src_address.u.ieee_addr[6],
+                              x.src_address.u.ieee_addr[5], x.src_address.u.ieee_addr[4],
+                              x.src_address.u.ieee_addr[3], x.src_address.u.ieee_addr[2],
+                              x.src_address.u.ieee_addr[1], x.src_address.u.ieee_addr[0]);
+                 - switch.control:
+                     id: relay_1_switch
+                     state: !lambda "return (x.value>10);"
   on_join:
     then:
       - logger.log: "Joined network"
