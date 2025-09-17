@@ -382,8 +382,11 @@ async def attributes_to_code(var, ep_num, cl):
                 attr_var,
             )
             await cg.register_component(trigger, conf)
+            value_type = get_c_type(attr[CONF_TYPE])
+            automation_arg_type = ("esphome::zigbee::ZigBeeReportData"
+                                   + str(cg.TemplateArguments(value_type)))
             await automation.build_automation(
-                trigger, [(cg.RawExpression("esphome::zigbee::ZigBeeReportData" + str(cg.TemplateArguments(get_c_type(attr[CONF_TYPE])))), "x")], conf
+                trigger, [(cg.RawExpression(automation_arg_type), "x")], conf
             )
 
 
