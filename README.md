@@ -125,6 +125,19 @@ zigbee:
              value: 0
              on_report:
                then:
+                 # The below lambda will be called with an argument
+                 # `ZigBeeReportData <T> x` where ZigBeeReportData is defined as
+                 #
+                 # template<typename T> struct ZigBeeReportData {
+                 #   // Value of the attribute sent from server side.
+                 #   T value;
+                 #   // Address of device which sent this value.
+                 #   esp_zb_zcl_addr_t src_address;
+                 #   // Number of the endpoint on device which sent this value.
+                 #   uint8_t src_endpoint;
+                 # };
+                 #
+                 # And T is a C++ type matching the type of the attribute.
                  - lambda: |-
                      ESP_LOGD("main", "Received PIHeatingDemand | address type: 0x%02x; short addr: 0x%04x; ieee addr: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X",
                               x.src_address.addr_type, x.src_address.u.short_addr,
