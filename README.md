@@ -114,6 +114,9 @@ zigbee:
               value: 100
               device: temp_sensor_id
               scale: 100
+    - device_type: HEATING_COOLING_UNIT
+      num: 3
+      clusters:
        - id: THERMOSTAT
          role: "Client"
          attributes:
