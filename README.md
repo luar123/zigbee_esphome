@@ -40,8 +40,8 @@ External ZigBee component for ESPHome.
 * scenes not implemented
 * Officially the zigbee stack supports only 10 endpoints. however, this is not enforced and at least for sensor endpoints more than 10 seem to work. More then 10 light endpoints will crash!
 * zigbee2mqtt: Only one light is supported without creating a custom converter/definition
-* zigbee2mqtt: Analog input cluster (used for sensors) supported by 2025 October release, but ignors type and unit
-* ZHA: Analog input cluster (used for sensors) without unit/type are ignored
+* zigbee2mqtt: Analog input cluster (used for sensors) is supported by 2025 October release, but ignores type and unit
+* ZHA: Analog input cluster (used for sensors) without unit/type is ignored
 * ZHA: Minimum reporting interval is set to high values (30s) for some sensors and can't be changed. Keep that in mind if reporting seems not to work properly.
 
 ### ToDo List (Short-Mid term)
@@ -76,14 +76,14 @@ zigbee:
 * **area** (Optional, int): Zigbee Physical Environment in basic cluster. See ZCL. Defaults to 0 = unknown
 * **router** (Optional, bool): Create a router device instead of an end device. Defaults to false
 * **debug** (Optional, bool): Print zigbee stack debug messages
-* **components** (Optional, string|list): all: add definitions for all supported components. None: Add no definitions (default). List of component ids: Add only those. Can be combined with manual definitions in endpoints
+* **components** (Optional, string|list): all: add definitions for all supported components that have a name and are not marked as internal. None: Add no definitions (default). List of component ids: Add only those. Can be combined with manual definitions in endpoints
 * **as_generic** (Optional, bool): Use generic/basic clusters where possible. Currently sensors and switches. Defaults to false
 * **endpoints** (Optional, list): endpoint list for advanced definitions. See examples
 
 [Todo]
 
 ### Basic mode
-By adding `components: all` the endpoint definition is generated automatically. Currently sensor, binary_sensor, light and switch components are supported. Because this is an external component the whole implementation is a bit hacky and likely to fails with some setups. Also it is not possible to tweak the generated definitions. Each entity creates a new endpoint. Lights are using the light clusters, switches on_off or binary_output clusters, binary sensors using binary input clusters and sensors are using either special clusters (e.g. temperature) or analog input clusters. For sensors also the unit/type is set. Please note that these definitions are not complete. Feel free to open an issue or pull request (see zigbee_ep.py)
+By adding `components: all` the endpoint definition is generated automatically. Currently sensor, binary_sensor, light and switch components are supported. Because this is an external component the whole implementation is a bit hacky and likely to fail with some setups. Also it is not possible to tweak the generated definitions. Each entity creates a new endpoint. Lights are using the light clusters, switches on_off or binary_output clusters, binary sensors using binary_input clusters and sensors are using either special clusters (e.g. temperature) or analog_input clusters. For sensors also the unit/type is set. Please note that these definitions are not complete. Feel free to open an issue or pull request (see zigbee_ep.py)
 
 example:
 ```
