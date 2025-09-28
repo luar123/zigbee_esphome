@@ -7,6 +7,9 @@
 #include "esphome/core/log.h"
 #include "zigbee_attribute.h"
 #include "zigbee.h"
+#ifdef USE_LIGHT
+#include "esphome/components/light/light_state.h"
+#endif
 
 namespace esphome {
 namespace zigbee {
@@ -108,6 +111,8 @@ template<class T> T get_value_by_type(uint8_t attr_type, void *data) {
 float get_r_from_xy(float x, float y);
 float get_g_from_xy(float x, float y);
 float get_b_from_xy(float x, float y);
+
+void set_light_color(uint8_t ep, light::LightCall *call, uint16_t value, bool is_x);
 
 }  // namespace zigbee
 }  // namespace esphome

@@ -30,5 +30,17 @@ float get_b_from_xy(float x, float y) {
   return b <= 0.0031308f ? 12.92f * b : (1.0f + 0.055f) * pow(b, (1.0f / 2.4f)) - 0.055f;
 }
 
+void set_light_color(uint8_t ep, light::LightCall *call, uint16_t value, bool is_x) {
+  static std::map<uint8_t, float> x;
+  static std::map<uint8_t, float> y;
+  if (is_x) {
+    x[ep] = (float) value / 65536;
+  } else {
+    y[ep] = (float) value / 65536;
+  }
+  ESP_LOGD(TAG, "Set color, x: %f, y: %f", x[ep], y[ep]);
+  call->set_rgb(get_r_from_xy(x[ep], y[ep]), get_g_from_xy(x[ep], y[ep]), get_b_from_xy(x[ep], y[ep]));
+}
+
 }  // namespace zigbee
 }  // namespace esphome

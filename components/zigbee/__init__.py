@@ -3,7 +3,7 @@ import re
 
 from esphome import automation
 import esphome.codegen as cg
-from esphome.components import binary_sensor, sensor, text_sensor
+from esphome.components import binary_sensor, sensor, switch, text_sensor
 from esphome.components.esp32 import (
     CONF_PARTITIONS,
     # add_extra_build_file,
@@ -16,7 +16,9 @@ import esphome.config_validation as cv
 from esphome.const import (
     CONF_AP,
     CONF_AREA,
+    CONF_COMPONENTS,
     CONF_DATE,
+    CONF_DEBUG,
     CONF_DEVICE,
     CONF_ID,
     CONF_LAMBDA,
@@ -33,45 +35,39 @@ from esphome.const import (
 from esphome.core import CORE, EsphomeError
 import esphome.final_validate as fv
 
+from .const import (
+    CONF_ACCESS,
+    CONF_AS_GENERIC,
+    CONF_ATTRIBUTE_ID,
+    CONF_ATTRIBUTES,
+    CONF_CLUSTERS,
+    CONF_DEVICE_TYPE,
+    CONF_ENDPOINTS,
+    CONF_IDENT_TIME,
+    CONF_MANUFACTURER,
+    CONF_NUM,
+    CONF_ON_JOIN,
+    CONF_REPORT,
+    CONF_ROLE,
+    CONF_ROUTER,
+    CONF_SCALE,
+)
+from .types import (
+    ReportAction,
+    ReportAttrAction,
+    ResetZigbeeAction,
+    SetAttrAction,
+    ZigBeeAttribute,
+    ZigBeeComponent,
+    ZigBeeJoinTrigger,
+    ZigBeeOnValueTrigger,
+)
 from .zigbee_const import ATTR_ACCESS, ATTR_TYPE, CLUSTER_ID, CLUSTER_ROLE, DEVICE_ID
+from .zigbee_ep import create_ep
 
 DEPENDENCIES = ["esp32"]
 
-CONF_ENDPOINTS = "endpoints"
-CONF_DEVICE_TYPE = "device_type"
-CONF_NUM = "num"
-CONF_CLUSTERS = "clusters"
-CONF_ON_JOIN = "on_join"
-CONF_IDENT_TIME = "ident_time"
-CONF_MANUFACTURER = "manufacturer"
-CONF_ATTRIBUTES = "attributes"
-CONF_ROLE = "role"
-CONF_ENDPOINT = "endpoint"
-CONF_CLUSTER = "cluster"
-CONF_REPORT = "report"
-CONF_ACCESS = "access"
-CONF_SCALE = "scale"
-CONF_ATTRIBUTE_ID = "attribute_id"
-CONF_ZIGBEE_ID = "zigbee_id"
-CONF_ROUTER = "router"
-
-zigbee_ns = cg.esphome_ns.namespace("zigbee")
-ZigBeeComponent = zigbee_ns.class_("ZigBeeComponent", cg.Component)
-ZigBeeAttribute = zigbee_ns.class_("ZigBeeAttribute", cg.Component)
-ZigBeeJoinTrigger = zigbee_ns.class_("ZigBeeJoinTrigger", automation.Trigger)
-ZigBeeOnValueTrigger = zigbee_ns.class_(
-    "ZigBeeOnValueTrigger", automation.Trigger.template(int), cg.Component
-)
-ResetZigbeeAction = zigbee_ns.class_(
-    "ResetZigbeeAction", automation.Action, cg.Parented.template(ZigBeeComponent)
-)
-SetAttrAction = zigbee_ns.class_("SetAttrAction", automation.Action)
-ReportAttrAction = zigbee_ns.class_(
-    "ReportAttrAction", automation.Action, cg.Parented.template(ZigBeeAttribute)
-)
-ReportAction = zigbee_ns.class_(
-    "ReportAction", automation.Action, cg.Parented.template(ZigBeeComponent)
-)
+comp_ids = 0
 
 
 def get_c_size(bits, options):
@@ -176,7 +172,8 @@ def final_validate(config):
     if CONF_WIFI in fv.full_config.get():
         if CONF_AP in fv.full_config.get()[CONF_WIFI]:
             raise cv.Invalid("Zigbee can't be used together with an Wifi Access Point.")
-
+    global comp_ids  # noqa: PLW0603
+    comp_ids = len(CORE.component_ids)
     return config
 
 
@@ -197,12 +194,18 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_VERSION, default=0): cv.int_,
             cv.Optional(CONF_AREA, default=0): cv.int_,  # make enum
             cv.Optional(CONF_ROUTER, default=False): cv.boolean,
-            cv.Required(CONF_ENDPOINTS): cv.ensure_list(
+            cv.Optional(CONF_DEBUG, default=False): cv.boolean,
+            cv.Optional(CONF_COMPONENTS): cv.Any(
+                cv.one_of("all", "none", lower=True),
+                cv.ensure_list(cv.use_id(cg.EntityBase)),
+            ),
+            cv.Optional(CONF_AS_GENERIC, default=False): cv.boolean,
+            cv.Optional(CONF_ENDPOINTS): cv.ensure_list(
                 cv.Schema(
                     {
                         cv.Required(CONF_DEVICE_TYPE): cv.enum(DEVICE_ID, upper=True),
                         cv.Optional(CONF_NUM): cv.int_range(1, 240),
-                        cv.Optional(CONF_CLUSTERS, default={}): cv.ensure_list(
+                        cv.Optional(CONF_CLUSTERS): cv.ensure_list(
                             cv.Schema(
                                 {
                                     cv.Required(CONF_ID): cv.Any(
@@ -285,8 +288,8 @@ CONFIG_SCHEMA = cv.All(
 
 def find_attr(conf, id):
     for ep in conf[CONF_ENDPOINTS]:
-        for cl in ep[CONF_CLUSTERS]:
-            for attr in cl[CONF_ATTRIBUTES]:
+        for cl in ep.get(CONF_CLUSTERS, []):
+            for attr in cl.get(CONF_ATTRIBUTES, []):
                 if attr[CONF_ID] == id:
                     return attr
     raise EsphomeError(f"Zigbee: Cannot find attribute {id}.")
@@ -298,10 +301,10 @@ async def attributes_to_code(var, ep_num, cl):
             attr[CONF_ID],
             var,
             ep_num,
-            cl[CONF_ID],
+            CLUSTER_ID.get(cl[CONF_ID], cl[CONF_ID]),
             cl[CONF_ROLE],
             attr[CONF_ATTRIBUTE_ID],
-            attr[CONF_TYPE],
+            ATTR_TYPE[attr[CONF_TYPE]],
             attr[CONF_SCALE],
         )
         await cg.register_component(attr_var, attr)
@@ -345,6 +348,12 @@ async def attributes_to_code(var, ep_num, cl):
                         [(cg.std_string, "x")],
                         return_type=get_c_type(attr[CONF_TYPE]),
                     )
+                elif device.base.type.inherits_from(switch.Switch):
+                    lambda_ = await cg.process_lambda(
+                        attr[CONF_LAMBDA],
+                        [(get_c_type(attr[CONF_TYPE]), "x")],
+                        return_type=cg.bool_,
+                    )
                 cg.add(attr_var.connect(template_arg, device, lambda_))
             else:
                 cg.add(attr_var.connect(template_arg, device))
@@ -379,6 +388,14 @@ async def to_code(config):
     if CONF_WIFI in CORE.config:
         add_idf_sdkconfig_option("CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE", 4096)
         cg.add_define("CONFIG_WIFI_COEX")
+    if config.get(CONF_DEBUG):
+        add_idf_sdkconfig_option("CONFIG_ZB_DEBUG_MODE", True)
+
+    # create endpoints
+    config, added_ids = create_ep(config, CORE.config)
+    cg.add_define("ESPHOME_COMPONENT_COUNT", comp_ids + added_ids)
+
+    # setup zigbee components
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     if CONF_NAME not in config:
@@ -417,7 +434,7 @@ async def to_code(config):
             cg.add(
                 var.add_cluster(
                     ep[CONF_NUM],
-                    cl[CONF_ID],
+                    CLUSTER_ID.get(cl[CONF_ID], cl[CONF_ID]),
                     cl[CONF_ROLE],
                 )
             )
