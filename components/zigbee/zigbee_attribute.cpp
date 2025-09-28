@@ -4,7 +4,7 @@ namespace esphome {
 namespace zigbee {
 
 void ZigBeeAttribute::set_attr_() {
-  if (!this->zb_->is_started()) {
+  if (!this->zb_->is_connected()) {
     return;
   }
   if (esp_zb_lock_acquire(20 / portTICK_PERIOD_MS)) {
@@ -26,7 +26,7 @@ void ZigBeeAttribute::set_attr_() {
 void ZigBeeAttribute::report_() { this->report_(false); }
 
 void ZigBeeAttribute::report_(bool has_lock) {
-  if (!this->zb_->is_started()) {
+  if (!this->zb_->is_connected()) {
     return;
   }
   if (has_lock or esp_zb_lock_acquire(20 / portTICK_PERIOD_MS)) {
