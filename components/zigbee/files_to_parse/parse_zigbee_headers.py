@@ -99,10 +99,7 @@ replacements_cl = {
 }
 
 remove_cl = [
-    "device_temp_config",
-    "alarms",
     "rssi_location",
-    "multi_input",
     "green_power",
     "keep_alive",
     "pump_config_control",
@@ -171,8 +168,6 @@ def write_attr_list_create(enums):
 
 
 remove_attra = [
-    "device_temp_config",
-    "alarms",
     "rssi_location",
     "green_power",
     "keep_alive",
