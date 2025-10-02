@@ -112,7 +112,9 @@ float get_r_from_xy(float x, float y);
 float get_g_from_xy(float x, float y);
 float get_b_from_xy(float x, float y);
 
+#ifdef USE_LIGHT
 void set_light_color(uint8_t ep, light::LightCall *call, uint16_t value, bool is_x);
+#endif
 
 }  // namespace zigbee
 }  // namespace esphome

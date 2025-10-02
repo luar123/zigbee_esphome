@@ -25,7 +25,9 @@
 namespace esphome {
 namespace zigbee {
 
+#ifdef USE_LIGHT
 void set_light_color(uint8_t ep, light::LightCall *call, uint16_t value, bool is_x);
+#endif
 
 class ZigBeeAttribute : public Component {
  public:
