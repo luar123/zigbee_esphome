@@ -111,6 +111,9 @@ esp_err_t esphome_zb_cluster_list_add_or_update_cluster(uint16_t cluster_id, esp
       case ESP_ZB_ZCL_CLUSTER_ID_POWER_CONFIG:
         ret = esp_zb_cluster_list_add_power_config_cluster(cluster_list, attr_list, role_mask);
         break;
+      case ESP_ZB_ZCL_CLUSTER_ID_DEVICE_TEMP_CONFIG:
+        ret = esp_zb_cluster_list_add_device_temp_config_cluster(cluster_list, attr_list, role_mask);
+        break;
       case ESP_ZB_ZCL_CLUSTER_ID_IDENTIFY:
         ret = esp_zb_cluster_list_add_identify_cluster(cluster_list, attr_list, role_mask);
         break;
@@ -128,6 +131,9 @@ esp_err_t esphome_zb_cluster_list_add_or_update_cluster(uint16_t cluster_id, esp
         break;
       case ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL:
         ret = esp_zb_cluster_list_add_level_cluster(cluster_list, attr_list, role_mask);
+        break;
+      case ESP_ZB_ZCL_CLUSTER_ID_ALARMS:
+        ret = esp_zb_cluster_list_add_alarms_cluster(cluster_list, attr_list, role_mask);
         break;
       case ESP_ZB_ZCL_CLUSTER_ID_TIME:
         ret = esp_zb_cluster_list_add_time_cluster(cluster_list, attr_list, role_mask);
@@ -149,6 +155,9 @@ esp_err_t esphome_zb_cluster_list_add_or_update_cluster(uint16_t cluster_id, esp
         break;
       case ESP_ZB_ZCL_CLUSTER_ID_BINARY_VALUE:
         ret = esp_zb_cluster_list_add_binary_value_cluster(cluster_list, attr_list, role_mask);
+        break;
+      case ESP_ZB_ZCL_CLUSTER_ID_MULTI_INPUT:
+        ret = esp_zb_cluster_list_add_multistate_input_cluster(cluster_list, attr_list, role_mask);
         break;
       case ESP_ZB_ZCL_CLUSTER_ID_MULTI_OUTPUT:
         ret = esp_zb_cluster_list_add_multistate_output_cluster(cluster_list, attr_list, role_mask);
@@ -262,6 +271,8 @@ esp_zb_attribute_list_t *esphome_zb_default_attr_list_create(uint16_t cluster_id
       return esp_zb_basic_cluster_create(NULL);
     case ESP_ZB_ZCL_CLUSTER_ID_POWER_CONFIG:
       return esp_zb_power_config_cluster_create(NULL);
+    case ESP_ZB_ZCL_CLUSTER_ID_DEVICE_TEMP_CONFIG:
+      return esp_zb_device_temp_config_cluster_create(NULL);
     case ESP_ZB_ZCL_CLUSTER_ID_IDENTIFY:
       return esp_zb_identify_cluster_create(NULL);
     case ESP_ZB_ZCL_CLUSTER_ID_GROUPS:
@@ -274,6 +285,8 @@ esp_zb_attribute_list_t *esphome_zb_default_attr_list_create(uint16_t cluster_id
       return esp_zb_on_off_switch_config_cluster_create(NULL);
     case ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL:
       return esp_zb_level_cluster_create(NULL);
+    case ESP_ZB_ZCL_CLUSTER_ID_ALARMS:
+      return esp_zb_alarms_cluster_create(NULL);
     case ESP_ZB_ZCL_CLUSTER_ID_TIME:
       return esp_zb_time_cluster_create(NULL);
     case ESP_ZB_ZCL_CLUSTER_ID_ANALOG_INPUT:
@@ -368,6 +381,8 @@ esp_err_t esphome_zb_cluster_add_attr(uint16_t cluster_id, esp_zb_attribute_list
       return esp_zb_basic_cluster_add_attr(attr_list, attr_id, value_p);
     case ESP_ZB_ZCL_CLUSTER_ID_POWER_CONFIG:
       return esp_zb_power_config_cluster_add_attr(attr_list, attr_id, value_p);
+    case ESP_ZB_ZCL_CLUSTER_ID_DEVICE_TEMP_CONFIG:
+      return esp_zb_device_temp_config_cluster_add_attr(attr_list, attr_id, value_p);
     case ESP_ZB_ZCL_CLUSTER_ID_IDENTIFY:
       return esp_zb_identify_cluster_add_attr(attr_list, attr_id, value_p);
     case ESP_ZB_ZCL_CLUSTER_ID_GROUPS:
@@ -380,6 +395,8 @@ esp_err_t esphome_zb_cluster_add_attr(uint16_t cluster_id, esp_zb_attribute_list
       return esp_zb_on_off_switch_config_cluster_add_attr(attr_list, attr_id, value_p);
     case ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL:
       return esp_zb_level_cluster_add_attr(attr_list, attr_id, value_p);
+    case ESP_ZB_ZCL_CLUSTER_ID_ALARMS:
+      return esp_zb_alarms_cluster_add_attr(attr_list, attr_id, value_p);
     case ESP_ZB_ZCL_CLUSTER_ID_TIME:
       return esp_zb_time_cluster_add_attr(attr_list, attr_id, value_p);
     case ESP_ZB_ZCL_CLUSTER_ID_ANALOG_INPUT:

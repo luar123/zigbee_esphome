@@ -1,7 +1,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_check.h"
-#include "esp_log.h"
 #include "nvs_flash.h"
 #include "zigbee_attribute.h"
 #include "zigbee.h"
@@ -79,13 +78,12 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
       // Device started using the NVRAM contents.
       if (err_status == ESP_OK) {
         ESP_LOGD(TAG, "Device started up in %sfactory-reset mode", esp_zb_bdb_is_factory_new() ? "" : "non ");
-        zigbeeC->started = true;
+        zigbeeC->started_ = true;
         if (esp_zb_bdb_is_factory_new()) {
           ESP_LOGD(TAG, "Start network steering");
           esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
         } else {
           ESP_LOGD(TAG, "Device rebooted");
-          zigbeeC->connected = true;
           zigbeeC->searchBindings();
         }
       } else {
@@ -109,7 +107,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
                  extended_pan_id[2], extended_pan_id[1], extended_pan_id[0], esp_zb_get_pan_id(),
                  esp_zb_get_current_channel());
         zigbeeC->on_join_callback_.call();
-        zigbeeC->connected = true;
+        zigbeeC->connected_ = true;
       } else {
         ESP_LOGI(TAG, "Network steering was not successful (status: %s)", esp_err_to_name(err_status));
         if (steering_retry_count < 10) {
@@ -152,6 +150,7 @@ void ZigBeeComponent::bindingTableCb(const esp_zb_zdo_binding_table_info_t *tabl
     if (table_info->total == 0) {
       ESP_LOGD(TAG, "No binding table entries found");
       free(req);
+      zigbeeC->connected_ = true;
       return;
     }
 
@@ -190,6 +189,7 @@ void ZigBeeComponent::bindingTableCb(const esp_zb_zdo_binding_table_info_t *tabl
     // Print bound devices
     ESP_LOGD(TAG, "Filling bounded devices finished");
     free(req);
+    zigbeeC->connected_ = true;
   }
 }
 

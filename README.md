@@ -1,5 +1,7 @@
-> [!WARNING]
-> **With the latest commit and esphome 2025.7 a different way of loading the zigbee sdk libs is used. Therefore it is recommended to delete the `.esphome/build/<name>/` folder.**
+> [!TIP]
+> **New simple Mode! No more endpoint definitions needed.**
+>
+> I started to implement the automated endpoint definition generation, see basic mode section for details.
 
 > [!Important]
 > **Please help to collect working cluster definitions [here](https://github.com/luar123/zigbee_esphome/discussions/22).**
@@ -11,6 +13,7 @@
 External ZigBee component for ESPHome.
 
 ### Features
+* Automated generation of zigbee definition for lights, switches, sensors and binary sensors (see basic mode)
 * Definition of endpoints, clusters and attributes supported by esp-zigbee-sdk 1.6
 * Set attributes action
 * Manual report action
@@ -19,7 +22,7 @@ External ZigBee component for ESPHome.
 * Attribute received trigger
 * Time sync with coordinator
 * Custom clusters and attributes
-* (normal, binary, text) sensors can be connected to attributes without need for lambdas/actions 
+* (normal, binary, text) sensors, switches and lights can be connected to attributes without need for lambdas/actions 
 * Wifi co-existence on ESP32-C6
 * Deep-sleep should work
 * Not tested: groups
@@ -35,10 +38,15 @@ External ZigBee component for ESPHome.
 * Needs esp-idf >=5.1.4
 * Needs esphome >=2025.7
 * scenes not implemented
+* Officially the zigbee stack supports only 10 endpoints. however, this is not enforced and at least for sensor endpoints more than 10 seem to work. More then 10 light endpoints will crash!
+* zigbee2mqtt: Only one light is supported without creating a custom converter/definition
+* zigbee2mqtt: Analog input cluster (used for sensors) is supported by 2025 October release, but ignores type and unit
+* ZHA: Analog input cluster (used for sensors) without unit/type is ignored
+* ZHA: Minimum reporting interval is set to high values (30s) for some sensors and can't be changed. Keep that in mind if reporting seems not to work properly.
 
 ### ToDo List (Short-Mid term)
 * Light effects (through identify cluster commands)
-* Easier setup of devices/endpoints
+* more components to support basic mode
 
 ### Not planed (feel free to submit a PR)
 * Coordinator devices
@@ -55,6 +63,7 @@ external_components:
     components: [zigbee]
 
 zigbee:
+  components: all # to add all supported components
   ...
 ```
 ### Configuration variables:
@@ -66,11 +75,27 @@ zigbee:
 * **version** (Optional, int): Zigbee App Version in basic cluster. Defaults to 0
 * **area** (Optional, int): Zigbee Physical Environment in basic cluster. See ZCL. Defaults to 0 = unknown
 * **router** (Optional, bool): Create a router device instead of an end device. Defaults to false
-* **endpoints** (Optional, list): endpoint list. See examples
+* **debug** (Optional, bool): Print zigbee stack debug messages
+* **components** (Optional, string|list): all: add definitions for all supported components that have a name and are not marked as internal. None: Add no definitions (default). List of component ids: Add only those. Can be combined with manual definitions in endpoints
+* **as_generic** (Optional, bool): Use generic/basic clusters where possible. Currently sensors and switches. Defaults to false
+* **endpoints** (Optional, list): endpoint list for advanced definitions. See examples
 
 [Todo]
 
-Example:
+### Basic mode
+By adding `components: all` the endpoint definition is generated automatically. Currently sensor, binary_sensor, light and switch components are supported. Because this is an external component the whole implementation is a bit hacky and likely to fail with some setups. Also it is not possible to tweak the generated definitions. Each entity creates a new endpoint. Lights are using the light clusters, switches on_off or binary_output clusters, binary sensors using binary_input clusters and sensors are using either special clusters (e.g. temperature) or analog_input clusters. For sensors also the unit/type is set. Please note that these definitions are not complete. Feel free to open an issue or pull request (see zigbee_ep.py)
+
+example:
+```
+zigbee:
+  id: "zb"
+  components: all
+```
+
+### Advanced mode
+Endpoint/Cluster definitions can be defined manually. Can be combined with automated definition.
+
+Advanced example:
 ```
 zigbee:
   id: "zb"

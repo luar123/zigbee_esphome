@@ -4,7 +4,7 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ID
 from esphome.cpp_generator import get_variable
 
-from .. import CONF_ZIGBEE_ID
+from ..const import CONF_ZIGBEE_ID
 
 DEPENDENCIES = ["zigbee"]
 

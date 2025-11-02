@@ -15,9 +15,19 @@
 #ifdef USE_TEXT_SENSOR
 #include "esphome/components/text_sensor/text_sensor.h"
 #endif
+#ifdef USE_SWITCH
+#include "esphome/components/switch/switch.h"
+#endif
+#ifdef USE_LIGHT
+#include "esphome/components/light/light_state.h"
+#endif
 
 namespace esphome {
 namespace zigbee {
+
+#ifdef USE_LIGHT
+void set_light_color(uint8_t ep, light::LightCall *call, uint16_t value, bool is_x);
+#endif
 
 class ZigBeeAttribute : public Component {
  public:
@@ -65,6 +75,13 @@ class ZigBeeAttribute : public Component {
 #ifdef USE_TEXT_SENSOR
   template<typename T> void connect(text_sensor::TextSensor *sensor);
   template<typename T> void connect(text_sensor::TextSensor *sensor, std::function<T(std::string)> &&f);
+#endif
+#ifdef USE_SWITCH
+  template<typename T> void connect(switch_::Switch *device);
+  template<typename T> void connect(switch_::Switch *device, std::function<bool(T)> &&f);
+#endif
+#ifdef USE_LIGHT
+  template<typename T> void connect(light::LightState *device);
 #endif
 
  protected:
@@ -118,6 +135,7 @@ template<typename T> void ZigBeeAttribute::set_attr(const T &value) {
     this->value_p = (void *) value_p;
   }
   this->set_attr_requested_ = true;
+  this->enable_loop();
 }
 
 #ifdef USE_SENSOR
@@ -147,6 +165,66 @@ template<typename T> void ZigBeeAttribute::connect(text_sensor::TextSensor *sens
 
 template<typename T> void ZigBeeAttribute::connect(text_sensor::TextSensor *sensor, std::function<T(std::string)> &&f) {
   sensor->add_on_state_callback([=, this](std::string value) { this->set_attr(f(value)); });
+}
+#endif
+
+#ifdef USE_SWITCH
+template<typename T> void ZigBeeAttribute::connect(switch_::Switch *device) {
+  this->add_on_value_callback([=, this](esp_zb_zcl_attribute_t attribute) {
+    if (attribute.data.type == this->attr_type() && attribute.data.value) {
+      if (get_value_by_type<T>(this->attr_type(), attribute.data.value)) {
+        device->turn_on();
+      } else {
+        device->turn_off();
+      }
+    }
+  });
+  device->add_on_state_callback([=, this](bool value) { this->set_attr((T) (this->scale_ * value)); });
+}
+
+template<typename T> void ZigBeeAttribute::connect(switch_::Switch *device, std::function<bool(T)> &&f) {
+  this->add_on_value_callback([=, this](esp_zb_zcl_attribute_t attribute) {
+    if (attribute.data.type == this->attr_type() && attribute.data.value) {
+      if (f(get_value_by_type<T>(this->attr_type(), attribute.data.value))) {
+        device->turn_on();
+      } else {
+        device->turn_off();
+      }
+    }
+  });
+}
+#endif
+
+#ifdef USE_LIGHT
+template<typename T> void ZigBeeAttribute::connect(light::LightState *device) {
+  this->add_on_value_callback([=, this](esp_zb_zcl_attribute_t attribute) {
+    if (attribute.data.type == this->attr_type() && attribute.data.value) {
+      light::LightCall call = device->make_call();
+      ESP_LOGD(TAG, "Make light call");
+      if (std::is_same<T, bool>::value) {
+        call.set_state(get_value_by_type<T>(this->attr_type(), attribute.data.value));
+        ESP_LOGD(TAG, "Set state");
+      } else if (this->cluster_id_ == 0x0300 && this->attr_id_ == 0x3) {
+        // set X
+        set_light_color(this->endpoint_id_, &call, get_value_by_type<uint16_t>(this->attr_type(), attribute.data.value),
+                        true);
+        ESP_LOGD(TAG, "Set X");
+      } else if (this->cluster_id_ == 0x0300 && this->attr_id_ == 0x4) {
+        // set Y
+        set_light_color(this->endpoint_id_, &call, get_value_by_type<uint16_t>(this->attr_type(), attribute.data.value),
+                        false);
+        ESP_LOGD(TAG, "Set Y");
+      } else if (this->cluster_id_ != 0x0300 and std::numeric_limits<T>::is_integer) {
+        call.set_brightness((float) get_value_by_type<T>(this->attr_type(), attribute.data.value) /
+                            255);  // integer level between 0 and 255
+        ESP_LOGD(TAG, "Set level: %f", (float) get_value_by_type<T>(this->attr_type(), attribute.data.value) / 255);
+        //} else if (this->cluster_id_ != 0x0300 and std::is_floating_point<T>) {
+        //  call.set_brightness(get_value_by_type<T>(this->attr_type(), attribute.data.value));  //float level between 0
+        //  and 1
+      }
+      call.perform();
+    }
+  });
 }
 #endif
 

@@ -19,6 +19,7 @@ void ZigbeeTime::send_timesync_request() {
     esp_zb_zcl_read_attr_cmd_req(&read_req);
     esp_zb_lock_release();
     this->requested_ = true;
+    ESP_LOGD(TAG, "Sent request");
   }
 }
 
@@ -69,7 +70,7 @@ void ZigbeeTime::loop() {
     return;
   if (this->requested_)
     return;
-  if (zc_->connected) {
+  if (zc_->is_connected()) {
     this->send_timesync_request();
   }
 }

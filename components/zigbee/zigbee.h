@@ -9,6 +9,7 @@
 #include "ha/esp_zigbee_ha_standard.h"
 #include "esphome/core/component.h"
 #include "esphome/core/automation.h"
+#include "esphome/core/log.h"
 #include "zigbee_helpers.h"
 
 #ifdef USE_ZIGBEE_TIME
@@ -93,9 +94,10 @@ class ZigBeeComponent : public Component {
 
   void add_on_join_callback(std::function<void()> &&callback) { this->on_join_callback_.add(std::move(callback)); }
 
-  bool is_started() { return this->started; }
-  bool connected = false;
-  bool started = false;
+  bool is_started() { return this->started_; }
+  bool is_connected() { return this->connected_; }
+  bool connected_ = false;
+  bool started_ = false;
 
   CallbackManager<void()> on_join_callback_{};
   std::deque<std::tuple<ZigBeeAttribute *, esp_zb_zcl_reporting_info_t>> reporting_list;
