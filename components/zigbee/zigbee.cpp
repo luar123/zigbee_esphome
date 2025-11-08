@@ -245,6 +245,17 @@ static esp_err_t zb_cmd_attribute_handler(const esp_zb_zcl_cmd_read_attr_resp_me
   return ret;
 }
 
+static esp_err_t zb_report_attribute_handler(const esp_zb_zcl_report_attr_message_t *message) {
+  esp_err_t ret = ESP_OK;
+
+  ESP_RETURN_ON_FALSE(message, ESP_FAIL, TAG, "Empty message");
+  ESP_RETURN_ON_FALSE(message->status == ESP_ZB_ZCL_STATUS_SUCCESS, ESP_ERR_INVALID_ARG, TAG,
+                      "Received message: error status(%d)", message->status);
+  zigbeeC->handle_report_attribute(message->dst_endpoint, message->cluster, message->attribute, message->src_address,
+                                   message->src_endpoint);
+  return ret;
+}
+
 static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id, const void *message) {
   esp_err_t ret = ESP_OK;
   switch (callback_id) {
@@ -253,6 +264,9 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
       break;
     case ESP_ZB_CORE_CMD_READ_ATTR_RESP_CB_ID:
       ret = zb_cmd_attribute_handler((esp_zb_zcl_cmd_read_attr_resp_message_t *) message);
+      break;
+    case ESP_ZB_CORE_REPORT_ATTR_CB_ID:
+      ret = zb_report_attribute_handler((esp_zb_zcl_report_attr_message_t *) message);
       break;
     case ESP_ZB_CORE_CMD_DEFAULT_RESP_CB_ID:
       ESP_LOGD(TAG, "Receive Zigbee default response callback");
@@ -270,6 +284,17 @@ void ZigBeeComponent::handle_attribute(esp_zb_device_cb_common_info_t info, esp_
     this->attributes_[{info.dst_endpoint, info.cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, attribute.id}]->on_value(
         attribute);
   }
+}
+
+void ZigBeeComponent::handle_report_attribute(uint8_t dst_endpoint, uint16_t cluster, esp_zb_zcl_attribute_t attribute,
+                                              esp_zb_zcl_addr_t src_address, uint8_t src_endpoint) {
+  auto attr = this->attributes_.find({dst_endpoint, cluster, ESP_ZB_ZCL_CLUSTER_CLIENT_ROLE, attribute.id});
+  if (attr == this->attributes_.end()) {
+    ESP_LOGD(TAG, "No attributes configured for report (endpoint %d; cluster 0x%04x; attribute id 0x%04x)",
+             dst_endpoint, cluster, attribute.id);
+    return;
+  }
+  attr->second->on_report(attribute, src_address, src_endpoint);
 }
 
 void ZigBeeComponent::create_default_cluster(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id) {

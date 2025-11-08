@@ -17,7 +17,8 @@ CONF_SCALE = "scale"
 CONF_ATTRIBUTE_ID = "attribute_id"
 CONF_ZIGBEE_ID = "zigbee_id"
 CONF_ROUTER = "router"
-CONF_AS_GENERIC = "as_geenric"
+CONF_AS_GENERIC = "as_generic"
+CONF_ON_REPORT = "on_report"
 
 
 @dataclass

@@ -47,6 +47,7 @@ from .const import (
     CONF_MANUFACTURER,
     CONF_NUM,
     CONF_ON_JOIN,
+    CONF_ON_REPORT,
     CONF_REPORT,
     CONF_ROLE,
     CONF_ROUTER,
@@ -61,6 +62,7 @@ from .types import (
     ZigBeeComponent,
     ZigBeeJoinTrigger,
     ZigBeeOnValueTrigger,
+    ZigBeeOnReportTrigger,
 )
 from .zigbee_const import ATTR_ACCESS, ATTR_TYPE, CLUSTER_ID, CLUSTER_ROLE, DEVICE_ID
 from .zigbee_ep import create_ep
@@ -258,6 +260,17 @@ CONFIG_SCHEMA = cv.All(
                                                 cv.Optional(
                                                     CONF_MAX_LENGTH
                                                 ): cv.int_range(0, 254),
+                                                cv.Optional(
+                                                    CONF_ON_REPORT
+                                                ): automation.validate_automation(
+                                                    {
+                                                        cv.GenerateID(
+                                                            CONF_TRIGGER_ID
+                                                        ): cv.declare_id(
+                                                            ZigBeeOnReportTrigger
+                                                        ),
+                                                    }
+                                                ),
                                             }
                                         ),
                                         validate_attributes,
@@ -367,6 +380,20 @@ async def attributes_to_code(var, ep_num, cl):
             await cg.register_component(trigger, conf)
             await automation.build_automation(
                 trigger, [(get_c_type(attr[CONF_TYPE]), "x")], conf
+            )
+
+        for conf in attr.get(CONF_ON_REPORT, []):
+            trigger = cg.new_Pvariable(
+                conf[CONF_TRIGGER_ID],
+                cg.TemplateArguments(get_c_type(attr[CONF_TYPE])),
+                attr_var,
+            )
+            await cg.register_component(trigger, conf)
+            value_type = get_c_type(attr[CONF_TYPE])
+            automation_arg_type = ("esphome::zigbee::ZigBeeReportData"
+                                   + str(cg.TemplateArguments(value_type)))
+            await automation.build_automation(
+                trigger, [(cg.RawExpression(automation_arg_type), "x")], conf
             )
 
 

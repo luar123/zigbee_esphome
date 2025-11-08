@@ -8,6 +8,9 @@ ZigBeeJoinTrigger = zigbee_ns.class_("ZigBeeJoinTrigger", automation.Trigger)
 ZigBeeOnValueTrigger = zigbee_ns.class_(
     "ZigBeeOnValueTrigger", automation.Trigger.template(int), cg.Component
 )
+ZigBeeOnReportTrigger = zigbee_ns.class_(
+    "ZigBeeOnReportTrigger", automation.Trigger.template(int), cg.Component
+)
 ResetZigbeeAction = zigbee_ns.class_(
     "ResetZigbeeAction", automation.Action, cg.Parented.template(ZigBeeComponent)
 )

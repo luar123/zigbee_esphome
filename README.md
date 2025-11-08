@@ -139,6 +139,40 @@ zigbee:
               value: 100
               device: temp_sensor_id
               scale: 100
+    - device_type: HEATING_COOLING_UNIT
+      num: 3
+      clusters:
+       - id: THERMOSTAT
+         role: "Client"
+         attributes:
+           - attribute_id: 0x0008 # PIHeatingDemand
+             type: U8
+             value: 0
+             on_report:
+               then:
+                 # The below lambda will be called with an argument
+                 # `ZigBeeReportData <T> x` where ZigBeeReportData is defined as
+                 #
+                 # template<typename T> struct ZigBeeReportData {
+                 #   // Value of the attribute sent from server side.
+                 #   T value;
+                 #   // Address of device which sent this value.
+                 #   esp_zb_zcl_addr_t src_address;
+                 #   // Number of the endpoint on device which sent this value.
+                 #   uint8_t src_endpoint;
+                 # };
+                 #
+                 # And T is a C++ type matching the type of the attribute.
+                 - lambda: |-
+                     ESP_LOGD("main", "Received PIHeatingDemand | address type: 0x%02x; short addr: 0x%04x; ieee addr: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X",
+                              x.src_address.addr_type, x.src_address.u.short_addr,
+                              x.src_address.u.ieee_addr[7], x.src_address.u.ieee_addr[6],
+                              x.src_address.u.ieee_addr[5], x.src_address.u.ieee_addr[4],
+                              x.src_address.u.ieee_addr[3], x.src_address.u.ieee_addr[2],
+                              x.src_address.u.ieee_addr[1], x.src_address.u.ieee_addr[0]);
+                 - switch.control:
+                     id: relay_1_switch
+                     state: !lambda "return (x.value>10);"
   on_join:
     then:
       - logger.log: "Joined network"

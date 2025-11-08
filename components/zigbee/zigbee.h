@@ -76,6 +76,8 @@ class ZigBeeComponent : public Component {
 
   void set_report(ZigBeeAttribute *attribute, esp_zb_zcl_reporting_info_t reporting_info);
   void handle_attribute(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute);
+  void handle_report_attribute(uint8_t dst_endpoint, uint16_t cluster, esp_zb_zcl_attribute_t attribute,
+                               esp_zb_zcl_addr_t src_address, uint8_t src_endpoint);
   void searchBindings();
   static void bindingTableCb(const esp_zb_zdo_binding_table_info_t *table_info, void *user_ctx);
 
