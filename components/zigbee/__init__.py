@@ -11,6 +11,15 @@ from esphome.components.esp32 import (
     add_idf_sdkconfig_option,
     only_on_variant,
 )
+
+try:
+    from esphome.components.esp32 import require_vfs_select
+except ImportError:
+
+    def require_vfs_select():
+        pass
+
+
 from esphome.components.esp32.const import VARIANT_ESP32C6, VARIANT_ESP32H2
 import esphome.config_validation as cv
 from esphome.const import (
@@ -182,6 +191,13 @@ def final_validate(config):
 FINAL_VALIDATE_SCHEMA = cv.Schema(final_validate)
 
 
+def _require_vfs_select(config):
+    """Register VFS select requirement during config validation."""
+    # ZigBee uses esp_vfs_eventfd which requires VFS select support
+    require_vfs_select()
+    return config
+
+
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
@@ -290,6 +306,7 @@ CONFIG_SCHEMA = cv.All(
         }
     ).extend(cv.COMPONENT_SCHEMA),
     cv.require_framework_version(esp_idf=cv.Version(5, 1, 2)),
+    _require_vfs_select,
     only_on_variant(
         supported=[
             VARIANT_ESP32H2,
