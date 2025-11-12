@@ -23,7 +23,7 @@ External ZigBee component for ESPHome.
 * Time sync with coordinator
 * Custom clusters and attributes
 * (normal, binary, text) sensors, switches and lights can be connected to attributes without need for lambdas/actions 
-* Wifi co-existence on ESP32-C6
+* Wifi co-existence on ESP32-C6 and ESP32-C5
 * Deep-sleep should work
 * Not tested: groups
 * Time sync with coordinator
@@ -249,7 +249,7 @@ ESPHome Zigbee using only dev board or additionally [AHT10 Temperature+Humidity 
 
 ### Hardware Required
 
-* One development board with ESP32-H2 or ESP32-C6 SoC acting as Zigbee end-device (that you will load ESPHome with the example config to).
+* One development board with ESP32-H2, ESP32-C5 or ESP32-C6 SoC acting as Zigbee end-device (that you will load ESPHome with the example config to).
   * For example, the official [ESP32-H2-DevKitM-1](https://docs.espressif.com/projects/espressif-esp-dev-kits/en/latest/esp32h2/esp32-h2-devkitm-1/user_guide.html) development kit board.
 * [AHT10 Temperature+Humidity Sensor](https://next.esphome.io/components/sensor/aht10) connected to I2C pins (SDA: 12, SCL: 22) for the aht10 example.
 * A USB cable for power supply and programming.

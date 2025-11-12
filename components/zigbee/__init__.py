@@ -20,7 +20,11 @@ except ImportError:
         pass
 
 
-from esphome.components.esp32.const import VARIANT_ESP32C6, VARIANT_ESP32H2
+from esphome.components.esp32.const import (
+    VARIANT_ESP32C5,
+    VARIANT_ESP32C6,
+    VARIANT_ESP32H2,
+)
 import esphome.config_validation as cv
 from esphome.const import (
     CONF_AP,
@@ -70,8 +74,8 @@ from .types import (
     ZigBeeAttribute,
     ZigBeeComponent,
     ZigBeeJoinTrigger,
-    ZigBeeOnValueTrigger,
     ZigBeeOnReportTrigger,
+    ZigBeeOnValueTrigger,
 )
 from .zigbee_const import ATTR_ACCESS, ATTR_TYPE, CLUSTER_ID, CLUSTER_ROLE, DEVICE_ID
 from .zigbee_ep import create_ep
@@ -311,6 +315,7 @@ CONFIG_SCHEMA = cv.All(
         supported=[
             VARIANT_ESP32H2,
             VARIANT_ESP32C6,
+            VARIANT_ESP32C5,
         ]
     ),
 )
@@ -407,8 +412,9 @@ async def attributes_to_code(var, ep_num, cl):
             )
             await cg.register_component(trigger, conf)
             value_type = get_c_type(attr[CONF_TYPE])
-            automation_arg_type = ("esphome::zigbee::ZigBeeReportData"
-                                   + str(cg.TemplateArguments(value_type)))
+            automation_arg_type = "esphome::zigbee::ZigBeeReportData" + str(
+                cg.TemplateArguments(value_type)
+            )
             await automation.build_automation(
                 trigger, [(cg.RawExpression(automation_arg_type), "x")], conf
             )
