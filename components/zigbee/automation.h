@@ -23,17 +23,29 @@ class ZigBeeJoinTrigger : public Trigger<> {
 
 template<typename... Ts> class ResetZigbeeAction : public Action<Ts...>, public Parented<ZigBeeComponent> {
  public:
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
+  void play(const Ts &...x) override { this->parent_->reset(); }
+#else
   void play(Ts... x) override { this->parent_->reset(); }
+#endif
 };
 
 template<typename... Ts> class ReportAction : public Action<Ts...>, public Parented<ZigBeeComponent> {
  public:
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
+  void play(const Ts &...x) override { this->parent_->report(); }
+#else
   void play(Ts... x) override { this->parent_->report(); }
+#endif
 };
 
 template<typename... Ts> class ReportAttrAction : public Action<Ts...>, public Parented<ZigBeeAttribute> {
  public:
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
+  void play(const Ts &...x) override { this->parent_->report(); }
+#else
   void play(Ts... x) override { this->parent_->report(); }
+#endif
 };
 
 template<typename T, typename... Ts> class SetAttrAction : public Action<Ts...> {
@@ -41,7 +53,11 @@ template<typename T, typename... Ts> class SetAttrAction : public Action<Ts...> 
   SetAttrAction(ZigBeeAttribute *parent) : parent_(parent) {}
   TEMPLATABLE_VALUE(T, value);
 
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
+  void play(const Ts &...x) override { this->parent_->set_attr(this->value_.value(x...)); }
+#else
   void play(Ts... x) override { this->parent_->set_attr(this->value_.value(x...)); }
+#endif
 
  protected:
   ZigBeeAttribute *parent_;
