@@ -7,8 +7,9 @@
 #include "esp_zigbee_core.h"
 #include "zboss_api.h"
 #include "ha/esp_zigbee_ha_standard.h"
-#include "esphome/core/component.h"
 #include "esphome/core/automation.h"
+#include "esphome/core/component.h"
+#include "esphome/core/defines.h"
 #include "esphome/core/log.h"
 #include "zigbee_helpers.h"
 

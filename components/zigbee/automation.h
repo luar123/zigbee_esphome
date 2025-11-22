@@ -2,8 +2,10 @@
 
 //#include <stdfloat> //deactive because not working with esp-idf 5.1.4
 
-#include "esphome/core/component.h"
 #include "esphome/core/automation.h"
+#include "esphome/core/component.h"
+#include "esphome/core/defines.h"
+#include "esphome/core/version.h"
 #include "esphome/core/log.h"
 #include "zigbee_attribute.h"
 #include "zigbee.h"
