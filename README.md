@@ -1,3 +1,11 @@
+# ESPHome ZigBee Component
+
+[![GitHub](https://img.shields.io/github/license/luar123/zigbee_esphome)](https://github.com/luar123/zigbee_esphome/blob/main/LICENSE)
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/luar123/zigbee_esphome)](https://github.com/luar123/zigbee_esphome/releases/latest)
+[![GitHub issues](https://img.shields.io/github/issues/luar123/zigbee_esphome)](https://github.com/luar123/zigbee_esphome/issues)
+
+External ZigBee component for ESPHome, enabling integration with Zigbee devices using the ESP Zigbee SDK.
+
 > [!TIP]
 > **New simple Mode! No more endpoint definitions needed.**
 >
@@ -8,65 +16,74 @@
 >  
 > **If something is not working please check the [troubleshooting](#troubleshooting) section first. Config validation is not complete. Always consult [Zigbee Cluster Library](https://csa-iot.org/wp-content/uploads/2022/01/07-5123-08-Zigbee-Cluster-Library-1.pdf) for cluster definitions**
 
-# ESPHome ZigBee external component
+## Table of Contents
+1. [Features](#features)
+2. [Requirements](#requirements)
+3. [Installation](#installation)
+4. [Usage](#usage)
+5. [Configuration](#configuration)
+6. [Basic Mode](#basic-mode)
+7. [Advanced Mode](#advanced-mode)
+8. [Actions](#actions)
+9. [Time Sync](#time-sync)
+10. [Troubleshooting](#troubleshooting)
+11. [Limitations](#limitations)
+12. [Contributing](#contributing)
+13. [External Documentation](#external-documentation)
 
-External ZigBee component for ESPHome.
+## Features
 
-### Features
-* Automated generation of zigbee definition for lights, switches, sensors and binary sensors (see basic mode)
-* Definition of endpoints, clusters and attributes supported by esp-zigbee-sdk 1.6
-* Set attributes action
-* Manual report action
-* Reset zigbee action
-* Join trigger
-* Attribute received trigger
-* Time sync with coordinator
-* Custom clusters and attributes
-* (normal, binary, text) sensors, switches and lights can be connected to attributes without need for lambdas/actions 
-* Wifi co-existence on ESP32-C6 and ESP32-C5
-* Deep-sleep should work
-* Not tested: groups
-* Time sync with coordinator
-* Router
+* **Automated Generation**: Automated generation of Zigbee definitions for lights, switches, sensors and binary sensors (see basic mode)
+* **Manual Definitions**: Definition of endpoints, clusters and attributes supported by esp-zigbee-sdk 1.6
+* **Attribute Actions**: Set attributes action
+* **Reporting**: Manual report action
+* **Reset**: Reset zigbee action
+* **Join Trigger**: Join trigger
+* **Attribute Triggers**: Attribute received trigger
+* **Time Sync**: Time sync with coordinator
+* **Custom Clusters**: Custom clusters and attributes
+* **Component Support**: (normal, binary, text) sensors, switches and lights can be connected to attributes without need for lambdas/actions 
+* **WiFi Co-existence**: WiFi co-existence on ESP32-C6 and ESP32-C5
+* **Deep Sleep**: Deep-sleep should work
+* **Router Support**: Router support
 
-### Limitations
-* No coordinator devices
-* Attribute set action works only with numeric types and character string
-* Attribute OnValue trigger works only with numeric types
-* Reporting can be enabled, but not configured
-* No control devices like switches ([workaround](https://github.com/luar123/zigbee_esphome/discussions/18#discussioncomment-11875376))
-* Needs esp-idf >=5.1.4
-* Needs esphome >=2025.7
-* scenes not implemented
-* Officially the zigbee stack supports only 10 endpoints. however, this is not enforced and at least for sensor endpoints more than 10 seem to work. More then 10 light endpoints will crash!
-* zigbee2mqtt: Only one light is supported without creating a custom converter/definition
-* zigbee2mqtt: Analog input cluster (used for sensors) is supported by 2025 October release, but ignores type and unit
-* ZHA: Analog input cluster (used for sensors) without unit/type is ignored
-* ZHA: Minimum reporting interval is set to high values (30s) for some sensors and can't be changed. Keep that in mind if reporting seems not to work properly.
+## Requirements
 
-### ToDo List (Short-Mid term)
-* Light effects (through identify cluster commands)
-* more components to support basic mode
+* **ESP-IDF**: >=5.1.4
+* **ESPHome**: >=2025.7
+* **Supported Boards**: ESP32-H2, ESP32-C5, ESP32-C6 SoC
 
-### Not planed (feel free to submit a PR)
-* Coordinator devices
-* Binding config in yaml
-* Reporting config in yaml
-* Control device support like switches ([workaround](https://github.com/luar123/zigbee_esphome/discussions/18#discussioncomment-11875376))
+## Installation
 
-## Usage
+### Using External Component (Recommended)
 
-Include external component:
-```
+Add to your ESPHome YAML configuration:
+
+```yaml
 external_components:
   - source: github://luar123/zigbee_esphome
     components: [zigbee]
 
 zigbee:
   components: all # to add all supported components
-  ...
 ```
-### Configuration variables:
+
+## Usage
+
+Include external component:
+```yaml
+external_components:
+  - source: github://luar123/zigbee_esphome
+    components: [zigbee]
+
+zigbee:
+  components: all # to add all supported components
+```
+
+## Configuration
+
+### Zigbee Configuration Variables:
+
 * **id** (Optional, string): Manually specify the ID for code generation.
 * **name** (Optional, string): Zigbee Model Identifier in basic cluster. Used by coordinator to match custom converters. Defaults to esphome.name
 * **manufacturer** (Optional, string): Zigbee Manufacturer Name in basic cluster. Used by coordinator to match custom converters. Defaults to "esphome"
@@ -80,23 +97,23 @@ zigbee:
 * **as_generic** (Optional, bool): Use generic/basic clusters where possible. Currently sensors and switches. Defaults to false
 * **endpoints** (Optional, list): endpoint list for advanced definitions. See examples
 
-[Todo]
+## Basic Mode
 
-### Basic mode
-By adding `components: all` the endpoint definition is generated automatically. Currently sensor, binary_sensor, light and switch components are supported. Because this is an external component the whole implementation is a bit hacky and likely to fail with some setups. Also it is not possible to tweak the generated definitions. Each entity creates a new endpoint. Lights are using the light clusters, switches on_off or binary_output clusters, binary sensors using binary_input clusters and sensors are using either special clusters (e.g. temperature) or analog_input clusters. For sensors also the unit/type is set. Please note that these definitions are not complete. Feel free to open an issue or pull request (see zigbee_ep.py)
+By adding `components: all` the endpoint definition is generated automatically. Currently sensor, binary_sensor, light and switch components are supported. Because this is an external component the whole implementation is a bit hacky and likely to fail with some setups. Also it is not possible to tweak the generated definitions. Each entity creates a new endpoint.
 
-example:
-```
+### Example:
+```yaml
 zigbee:
   id: "zb"
   components: all
 ```
 
-### Advanced mode
+## Advanced Mode
+
 Endpoint/Cluster definitions can be defined manually. Can be combined with automated definition.
 
-Advanced example:
-```
+### Advanced Example:
+```yaml
 zigbee:
   id: "zb"
   endpoints:
@@ -178,39 +195,30 @@ zigbee:
       - logger.log: "Joined network"
 ```
 
-### Actions
-* zigbee.setAttr
-  * id: "id of attribute"
-  * value: "value, can be a lambda"
-    * only numeric or string types
-* zigbee.report: "id of zigbee component"
-  * Manually send reports for all attributes with report=true
-* zigbee.reportAttr: "id of zigbee_attribute component"
-  * Manually send report for attribute
-* zigbee.reset: "id of zigbee component"
-  * Reset Zigbee Network and Device. Leave the current network and tries to join open networks.
+## Actions
 
-Examples:
-```
-    on_value:
-      then:
-        - zigbee.setAttr:
-            id: hum_attr
-            value: !lambda "return x*100;"
-```
-```
-    on_press:
-      then:
-        - zigbee.report: zb
-```
+### zigbee.setAttr
+* **id**: "id of attribute"
+* **value**: "value, can be a lambda"
+  * only numeric or string types
 
-### Time sync
+### zigbee.report
+* **id**: "id of zigbee component"
+* **Manually send reports for all attributes with report=true**
+
+### zigbee.reportAttr
+* **id**: "id of zigbee_attribute component"
+* **Manually send report for attribute**
+
+### zigbee.reset
+* **id**: "id of zigbee component"
+* **Reset Zigbee Network and Device. Leave the current network and tries to join open networks.**
+
+## Time Sync
+
 Add a 'time' component with platform 'zigbee', e.g.:
-```
-zigbee:
-  id: "zb"
-  ...
 
+```yaml
 time:
   - platform: zigbee
     timezone: Europe/London
@@ -224,28 +232,65 @@ time:
 ```
 
 ## Troubleshooting
-* Build errors
-  - Try to run `esphome clean <name.ymal>` 
-  - Try to delete the `.esphome/build/<name>/` folder
-* ESP crashes
-  - Try to erase completely with `esptool.py erase_flash` and flash again.
-  - Make sure your configuration is valid. Config validation is not complete. Always consult [Zigbee Cluster Library](https://csa-iot.org/wp-content/uploads/2022/01/07-5123-08-Zigbee-Cluster-Library-1.pdf) for cluster definitions
-  - Common issues are that attributes do not support reporting (try set `report: false`), use a different type, or are not readable/writable (see ZCL).
-* Zigbee is not working as expected
-  - Whenever the cluster definition changed you need to re-interview and remove/add the device to your network.
-  - Sometimes it helps to power-cycle the coordinator and restarting z2m.
-  - Remove other endpoints. Sometimes coordinators struggle with multiple endpoints.
 
-## Notes
-* I don't have much free time to work on this right now, so feel free to fork/improve/create PRs/etc.
-* At the moment, the C++ implementation is rather simple and generic. I tried to keep as much logic as possible in the python part. However, endpoints/clusters ~~/attributes~~ could also be classes, this would simplify the yaml setup but requires more sophisticated C++ code. 
-* There is also a project with more advanced C++ zigbee libraries for esp32 that could be used here as well: https://github.com/Muk911/esphome/tree/main/esp32c6/hello-zigbee
-* [parse_zigbee_headers.py](components/zigbee/files_to_parse/parse_zigbee_headers.py) is used to create the python enums and C helper functions automatically from zigbee sdk headers.
-* Deprecated [custom zigbee component](https://github.com/luar123/esphome_zb_sensor)
+* **Build errors**
+  * Try to run `esphome clean <name.ymal>` 
+  * Try to delete the `.esphome/build/<name>/` folder
+* **ESP crashes**
+  * Try to erase completely with `esptool.py erase_flash` and flash again.
+  * Make sure your configuration is valid. Config validation is not complete. Always consult [Zigbee Cluster Library](https://csa-iot.org/wp-content/uploads/2022/01/07-5123-08-Zigbee-Cluster-Library-1.pdf) for cluster definitions
+  * Common issues are that attributes do not support reporting (try set `report: false`), use a different type, or are not readable/writable (see ZCL).
+* **Zigbee is not working as expected**
+  * Whenever the cluster definition changed you need to re-interview and remove/add the device to your network.
+  * Sometimes it helps to power-cycle the coordinator and restarting z2m.
+  * Remove other endpoints. Sometimes coordinators struggle with multiple endpoints.
 
-## Example Zigbee device
+## Limitations
 
-ESPHome Zigbee using only dev board or additionally [AHT10 Temperature+Humidity Sensor](https://next.esphome.io/components/sensor/aht10).
+* **No Coordinator Support**: No coordinator devices
+* **Attribute Set**: Attribute set action works only with numeric types and character string
+* **OnValue Trigger**: OnValue trigger works only with numeric types
+* **Reporting**: Reporting can be enabled, but not configured
+* **Control Devices**: No control devices like switches [workaround available](https://github.com/luar123/zigbee_esphome/discussions/18#discussioncomment-11875376)
+* **ESP-IDF Requirement**: Needs esp-idf >=5.1.4
+* **ESPHome Version**: Needs esphome >=2025.7
+* **Scenes**: Scenes not implemented
+* **Endpoint Limit**: Officially the zigbee stack supports only 10 endpoints. However, this is not enforced and at least for sensor endpoints more than 10 seem to work. More than 10 light endpoints will crash!
+* **Zigbee2MQTT Compatibility**: Only one light is supported without creating a custom converter/definition
+* **Zigbee2MQTT Sensors**: Analog input cluster (used for sensors) is supported by 2025 October release, but ignores type and unit
+* **ZHA Compatibility**: Analog input cluster (used for sensors) without unit/type is ignored
+* **ZHA Reporting**: Minimum reporting interval is set to high values (30s) for some sensors and can't be changed. Keep that in mind if reporting seems not to work properly.
+
+## Contributing
+
+**Please submit all PRs here** and not to https://github.com/luar123/esphome/tree/zigbee
+
+Use pre-commit hook by enabling you esphome environment first and then running `pre-commit install` in the git root foulder.
+
+If looking to contribute to this project, then suggest follow steps in these guides + look at issues in Espressif's ESP Zigbee SDK repository:
+
+* https://github.com/espressif/esp-zigbee-sdk/issues
+* https://github.com/firstcontributions/first-contributions/blob/master/README.md
+* https://github.com/firstcontributions/first-contributions/blob/master/github-desktop-tutorial.md
+
+## External Documentation
+
+### Official Resources
+
+* [ESP Zigbee SDK Programming Guide](https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32/)
+* [ESP-Zigbee-SDK Github repo](https://github.com/espressif/esp-zigbee-sdk)
+* [ESP-Zigbee-SDK examples](https://github.com/espressif/esp-zigbee-sdk/tree/main/examples/)
+  * [Zigbee HA Example](https://github.com/espressif/esp-zigbee-sdk/tree/main/examples/esp_zigbee_HA_sample)
+    * [Zigbee HA Light Bulb example](https://github.com/espressif/esp-zigbee-sdk/tree/main/examples/esp_zigbee_HA_sample/HA_on_off_light)
+    * [Zigbee HA temperature sensor example](https://github.com/espressif/esp-zigbee-sdk/tree/main/examples/esp_zigbee_HA_sample/HA_temperature_sensor)
+    * [Zigbee HA thermostat example](https://github.com/espressif/esp-zigbee-sdk/tree/main/examples/esp_zigbee_HA_sample/HA_thermostat)
+
+### Additional Resources
+
+* [ESP32-H2 Application User Guide](https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32h2/application.html)
+* [ESP32-C6 Application User Guide](https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32c6/application.html)
+
+## Example Zigbee Device
 
 ### Hardware Required
 
@@ -259,31 +304,12 @@ ESPHome Zigbee using only dev board or additionally [AHT10 Temperature+Humidity 
 
 * We will build [example_esp32h2.yaml](example_esp32h2.yaml) file.
 * Check [Getting Started with the ESPHome Command Line](https://esphome.io/guides/getting_started_command_line.html) tutorial to set up your dev environment.
-* Build with `esphome run example_esp32h2.yaml`. 
+* Build with `esphome run example_esp32h2.yaml`.
 
-## How to contribute
+## Notes
 
-**Please submit all PRs here** and not to https://github.com/luar123/esphome/tree/zigbee
-
-Use pre-commit hook by enabling you esphome environment first and then running `pre-commit install` in the git root foulder.
-
-If looking to contribute to this project, then suggest follow steps in these guides + look at issues in Espressif's ESP Zigbee SDK repository:
-
-- https://github.com/espressif/esp-zigbee-sdk/issues
-- https://github.com/firstcontributions/first-contributions/blob/master/README.md
-- https://github.com/firstcontributions/first-contributions/blob/master/github-desktop-tutorial.md
-
-
-## External documentation and reference
-
-Note! The official documentation and reference examples for the ESP Zigbee SDK can currently be obtained from Espressif:
-
- - [ESP32 Zigbee SDK Programming Guide](https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32/)
-   - [ESP32-H2 Application User Guide](https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32h2/application.html)
-   - [ESP32-C6 Application User Guide](https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32c6/application.html)
-- [ESP-Zigbee-SDK Github repo](https://github.com/espressif/esp-zigbee-sdk)
-  - [ESP-Zigbee-SDK examples](https://github.com/espressif/esp-zigbee-sdk/tree/main/examples/)
-    - [Zigbee HA Example](https://github.com/espressif/esp-zigbee-sdk/tree/main/examples/esp_zigbee_HA_sample)
-      - [Zigbee HA Light Bulb example](https://github.com/espressif/esp-zigbee-sdk/tree/main/examples/esp_zigbee_HA_sample/HA_on_off_light)
-      - [Zigbee HA temperature sensor example](https://github.com/espressif/esp-zigbee-sdk/tree/main/examples/esp_zigbee_HA_sample/HA_temperature_sensor)
-      - [Zigbee HA thermostat example](https://github.com/espressif/esp-zigbee-sdk/tree/main/examples/esp_zigbee_HA_sample/HA_thermostat)
+* I don't have much free time to work on this right now, so feel free to fork/improve/create PRs/etc.
+* At the moment, the C++ implementation is rather simple and generic. I tried to keep as much logic as possible in the python part. However, endpoints/clusters ~~/attributes~~ could also be classes, this would simplify the yaml setup but requires more sophisticated C++ code. 
+* There is also a project with more advanced C++ zigbee libraries for esp32 that could be used here as well: https://github.com/Muk911/esphome/tree/main/esp32c6/hello-zigbee
+* [parse_zigbee_headers.py](components/zigbee/files_to_parse/parse_zigbee_headers.py) is used to create the python enums and C helper functions automatically from zigbee sdk headers.
+* Deprecated [custom zigbee component](https://github.com/luar123/esphome_zb_sensor)
