@@ -1,9 +1,5 @@
 # ESPHome ZigBee Component
 
-[![GitHub](https://img.shields.io/github/license/luar123/zigbee_esphome)](https://github.com/luar123/zigbee_esphome/blob/main/LICENSE)
-[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/luar123/zigbee_esphome)](https://github.com/luar123/zigbee_esphome/releases/latest)
-[![GitHub issues](https://img.shields.io/github/issues/luar123/zigbee_esphome)](https://github.com/luar123/zigbee_esphome/issues)
-
 External ZigBee component for ESPHome, enabling integration with Zigbee devices using the ESP Zigbee SDK.
 
 > [!TIP]
@@ -100,6 +96,15 @@ zigbee:
 ## Basic Mode
 
 By adding `components: all` the endpoint definition is generated automatically. Currently sensor, binary_sensor, light and switch components are supported. Because this is an external component the whole implementation is a bit hacky and likely to fail with some setups. Also it is not possible to tweak the generated definitions. Each entity creates a new endpoint.
+
+**Important**: you must include the required partition table file in your ESP32 configuration each time that you using this components:
+
+```yaml
+esp32:
+  partitions: partitions_zb.csv
+```
+
+This file is mandatory for proper operation and can be found in the component directory. It defines the memory partitions needed for Zigbee operations.
 
 ### Example:
 ```yaml
