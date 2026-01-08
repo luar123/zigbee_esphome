@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+import esphome.codegen as cg
+
 CONF_ENDPOINTS = "endpoints"
 CONF_DEVICE_TYPE = "device_type"
 CONF_NUM = "num"
@@ -19,6 +21,12 @@ CONF_ZIGBEE_ID = "zigbee_id"
 CONF_ROUTER = "router"
 CONF_AS_GENERIC = "as_generic"
 CONF_ON_REPORT = "on_report"
+
+# dummies for upstream compatibility
+binary_sensor_ns = cg.esphome_ns.namespace("binary_sensor")
+BinarySensor = binary_sensor_ns.class_("BinarySensor", cg.EntityBase)
+sensor_ns = cg.esphome_ns.namespace("sensor")
+Sensor = sensor_ns.class_("Sensor", cg.EntityBase)
 
 
 @dataclass

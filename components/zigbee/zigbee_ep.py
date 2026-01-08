@@ -1,6 +1,6 @@
 import copy
 
-from esphome.components import binary_sensor, light, output, sensor, switch
+from esphome.components import light, output, switch
 import esphome.config_validation as cv
 from esphome.const import (
     CONF_COMPONENTS,
@@ -52,6 +52,8 @@ from .const import (
     CONF_SCALE,
     AnalogInputType,
     BacnetUnit,
+    BinarySensor,
+    Sensor,
 )
 from .types import ZigBeeAttribute
 from .zigbee_const import CLUSTER_ROLE
@@ -400,7 +402,7 @@ BACNET_UNIT = {
 def create_device_ep(eps, dev, generic=False):
     ep = {}
     ep[CONF_NUM] = get_next_ep_num(eps)
-    if dev["id"].type.inherits_from(sensor.Sensor):
+    if dev["id"].type.inherits_from(Sensor):
         if dev.get(CONF_DEVICE_CLASS, "") in ep_configs and not generic:
             ep.update(copy.deepcopy(ep_configs[dev[CONF_DEVICE_CLASS]]))
         else:
@@ -439,7 +441,7 @@ def create_device_ep(eps, dev, generic=False):
             ep.update(copy.deepcopy(ep_configs["binary_output"]))
         else:
             ep.update(copy.deepcopy(ep_configs["on_off"]))
-    elif dev["id"].type.inherits_from(binary_sensor.BinarySensor):
+    elif dev["id"].type.inherits_from(BinarySensor):
         ep.update(copy.deepcopy(ep_configs["binary_input"]))
     elif dev["id"].type.inherits_from(light.LightState):
         if dev["platform"] in ["binary", "status_led"] or (
@@ -509,10 +511,8 @@ def create_ep(config, full_conf):
             i["id"]
             for i in get_device_entries(full_conf.get("light", []), light.LightState)
             + get_device_entries(full_conf.get("switch", []), switch.Switch)
-            + get_device_entries(full_conf.get("sensor", []), sensor.Sensor)
-            + get_device_entries(
-                full_conf.get("binary_sensor", []), binary_sensor.BinarySensor
-            )
+            + get_device_entries(full_conf.get("sensor", []), Sensor)
+            + get_device_entries(full_conf.get("binary_sensor", []), BinarySensor)
         ]
 
         add_devices = []
@@ -528,10 +528,8 @@ def create_ep(config, full_conf):
                     full_conf.get("light", []), light.LightState
                 )
                 + get_device_entries(full_conf.get("switch", []), switch.Switch)
-                + get_device_entries(full_conf.get("sensor", []), sensor.Sensor)
-                + get_device_entries(
-                    full_conf.get("binary_sensor", []), binary_sensor.BinarySensor
-                )
+                + get_device_entries(full_conf.get("sensor", []), Sensor)
+                + get_device_entries(full_conf.get("binary_sensor", []), BinarySensor)
                 if i["id"] in list_devs
             ]
         if config[CONF_COMPONENTS] == "all":
@@ -541,23 +539,18 @@ def create_ep(config, full_conf):
                     full_conf.get("light", []), light.LightState
                 )
                 + get_device_entries(full_conf.get("switch", []), switch.Switch)
-                + get_device_entries(full_conf.get("sensor", []), sensor.Sensor)
-                + get_device_entries(
-                    full_conf.get("binary_sensor", []), binary_sensor.BinarySensor
-                )
+                + get_device_entries(full_conf.get("sensor", []), Sensor)
+                + get_device_entries(full_conf.get("binary_sensor", []), BinarySensor)
                 if ("name" in i) and not i.get("internal")
             ]
-        if CONF_ENDPOINTS not in config:
-            config[CONF_ENDPOINTS] = []
+        ep_list = config.get(CONF_ENDPOINTS, [])
         for dev in add_devices:
-            config[CONF_ENDPOINTS].append(
-                create_device_ep(eps, dev, config[CONF_AS_GENERIC])
-            )
-    if not config.get(CONF_ENDPOINTS):
-        config[CONF_ENDPOINTS] = [
+            ep_list.append(create_device_ep(eps, dev, config[CONF_AS_GENERIC]))
+    if not ep_list:
+        ep_list = [
             {
                 CONF_DEVICE_TYPE: "CUSTOM_ATTR",
                 CONF_NUM: 1,
             }
         ]
-    return config, len(CORE.component_ids) - comp_ids
+    return ep_list, len(CORE.component_ids) - comp_ids

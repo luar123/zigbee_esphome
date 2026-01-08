@@ -3,7 +3,7 @@ import re
 
 from esphome import automation
 import esphome.codegen as cg
-from esphome.components import binary_sensor, sensor, switch, text_sensor
+from esphome.components import switch, text_sensor
 from esphome.components.esp32 import (
     CONF_PARTITIONS,
     # add_extra_build_file,
@@ -65,6 +65,8 @@ from .const import (
     CONF_ROLE,
     CONF_ROUTER,
     CONF_SCALE,
+    BinarySensor,
+    Sensor,
 )
 from .types import (
     ReportAction,
@@ -83,6 +85,26 @@ from .zigbee_ep import create_ep
 DEPENDENCIES = ["esp32"]
 
 comp_ids = 0
+
+# dummies for upstream compatibility
+BINARY_SENSOR_SCHEMA = cv.Schema({})
+SENSOR_SCHEMA = cv.Schema({})
+
+
+def validate_binary_sensor(x):
+    return x
+
+
+def validate_sensor(x):
+    return x
+
+
+async def setup_binary_sensor(sensor, config):
+    pass
+
+
+async def setup_sensor(sensor, config):
+    pass
 
 
 def get_c_size(bits, options):
@@ -365,13 +387,13 @@ async def attributes_to_code(var, ep_num, cl):
             device = await cg.get_variable(attr[CONF_DEVICE])
             template_arg = cg.TemplateArguments(get_c_type(attr[CONF_TYPE]))
             if CONF_LAMBDA in attr:
-                if device.base.type.inherits_from(sensor.Sensor):
+                if device.base.type.inherits_from(Sensor):
                     lambda_ = await cg.process_lambda(
                         attr[CONF_LAMBDA],
                         [(cg.float_, "x")],
                         return_type=get_c_type(attr[CONF_TYPE]),
                     )
-                elif device.base.type.inherits_from(binary_sensor.BinarySensor):
+                elif device.base.type.inherits_from(BinarySensor):
                     lambda_ = await cg.process_lambda(
                         attr[CONF_LAMBDA],
                         [(cg.bool_, "x")],
@@ -442,7 +464,7 @@ async def to_code(config):
         add_idf_sdkconfig_option("CONFIG_ZB_DEBUG_MODE", True)
 
     # create endpoints
-    config, added_ids = create_ep(config, CORE.config)
+    ep_list, added_ids = create_ep(config, CORE.config)
     cg.add_define("ESPHOME_COMPONENT_COUNT", comp_ids + added_ids)
 
     # setup zigbee components
@@ -465,7 +487,7 @@ async def to_code(config):
     )
     if CONF_IDENT_TIME in config:
         cg.add(var.set_ident_time(config[CONF_IDENT_TIME]))
-    for ep in config[CONF_ENDPOINTS]:
+    for ep in ep_list:
         cg.add(
             var.create_default_cluster(ep[CONF_NUM], DEVICE_ID[ep[CONF_DEVICE_TYPE]])
         )
