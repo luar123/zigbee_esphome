@@ -506,6 +506,7 @@ def create_ep(config, full_conf):
         for ep in config[CONF_ENDPOINTS]:
             if CONF_NUM not in ep:
                 ep[CONF_NUM] = get_next_ep_num(eps)
+    ep_list = config.get(CONF_ENDPOINTS, [])
     if CONF_COMPONENTS in config:
         devs = [
             i["id"]
@@ -543,7 +544,6 @@ def create_ep(config, full_conf):
                 + get_device_entries(full_conf.get("binary_sensor", []), BinarySensor)
                 if ("name" in i) and not i.get("internal")
             ]
-        ep_list = config.get(CONF_ENDPOINTS, [])
         for dev in add_devices:
             ep_list.append(create_device_ep(eps, dev, config[CONF_AS_GENERIC]))
     if not ep_list:
