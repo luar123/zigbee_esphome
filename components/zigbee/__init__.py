@@ -1,4 +1,5 @@
 import datetime
+from pathlib import Path
 import re
 
 from esphome import automation
@@ -6,7 +7,7 @@ import esphome.codegen as cg
 from esphome.components import switch, text_sensor
 from esphome.components.esp32 import (
     CONF_PARTITIONS,
-    # add_extra_build_file,
+    add_extra_script,
     add_idf_component,
     add_idf_sdkconfig_option,
     only_on_variant,
@@ -451,6 +452,7 @@ async def to_code(config):
         name="espressif/esp-zigbee-lib",
         ref="1.6.8",
     )
+
     add_idf_sdkconfig_option("CONFIG_ZB_ENABLED", True)
     if config.get(CONF_ROUTER):
         add_idf_sdkconfig_option("CONFIG_ZB_ZCZR", True)
@@ -465,7 +467,14 @@ async def to_code(config):
 
     # create endpoints
     ep_list, added_ids = create_ep(config, CORE.config)
-    cg.add_define("ESPHOME_COMPONENT_COUNT", comp_ids + added_ids)
+    if added_ids:
+        # update ESPHOME_COMPONENT_COUNT via pre build script
+        cg.add_define("ZB_ESPHOME_COMPONENT_COUNT", comp_ids + added_ids)
+        add_extra_script(
+            "pre",
+            "zigbee_pre_build.py",
+            Path(__file__).parent / "zigbee_pre_build.py.script",
+        )
 
     # setup zigbee components
     var = cg.new_Pvariable(config[CONF_ID])
