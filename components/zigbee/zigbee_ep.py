@@ -1,6 +1,6 @@
 import copy
 
-from esphome.components import light, output, switch
+from esphome.components import light, output
 import esphome.config_validation as cv
 from esphome.const import (
     CONF_COMPONENTS,
@@ -54,6 +54,7 @@ from .const import (
     BacnetUnit,
     BinarySensor,
     Sensor,
+    Switch,
 )
 from .types import ZigBeeAttribute
 from .zigbee_const import CLUSTER_ROLE
@@ -413,7 +414,7 @@ def create_device_ep(eps, dev, generic=False):
             unit = dev.get(CONF_UNIT_OF_MEASUREMENT)
             apptype = ANALOG_INPUT_APPTYPE.get((dev_class, unit))
             bacunit = BACNET_UNIT.get(unit)
-            if apptype:
+            if apptype is not None:
                 ep[CONF_CLUSTERS][0][CONF_ATTRIBUTES].append(
                     {
                         CONF_ATTRIBUTE_ID: 0x100,
@@ -424,7 +425,7 @@ def create_device_ep(eps, dev, generic=False):
                         CONF_SCALE: 1,
                     },
                 )
-            elif bacunit:
+            if bacunit is not None:
                 ep[CONF_CLUSTERS][0][CONF_ATTRIBUTES].append(
                     {
                         CONF_ATTRIBUTE_ID: 0x75,
@@ -436,7 +437,7 @@ def create_device_ep(eps, dev, generic=False):
                     },
                 )
 
-    elif dev["id"].type.inherits_from(switch.Switch):
+    elif dev["id"].type.inherits_from(Switch):
         if generic:
             ep.update(copy.deepcopy(ep_configs["binary_output"]))
         else:
@@ -511,7 +512,7 @@ def create_ep(config, full_conf):
         devs = [
             i["id"]
             for i in get_device_entries(full_conf.get("light", []), light.LightState)
-            + get_device_entries(full_conf.get("switch", []), switch.Switch)
+            + get_device_entries(full_conf.get("switch", []), Switch)
             + get_device_entries(full_conf.get("sensor", []), Sensor)
             + get_device_entries(full_conf.get("binary_sensor", []), BinarySensor)
         ]
@@ -528,7 +529,7 @@ def create_ep(config, full_conf):
                 for i in get_device_entries(
                     full_conf.get("light", []), light.LightState
                 )
-                + get_device_entries(full_conf.get("switch", []), switch.Switch)
+                + get_device_entries(full_conf.get("switch", []), Switch)
                 + get_device_entries(full_conf.get("sensor", []), Sensor)
                 + get_device_entries(full_conf.get("binary_sensor", []), BinarySensor)
                 if i["id"] in list_devs
@@ -539,7 +540,7 @@ def create_ep(config, full_conf):
                 for i in get_device_entries(
                     full_conf.get("light", []), light.LightState
                 )
-                + get_device_entries(full_conf.get("switch", []), switch.Switch)
+                + get_device_entries(full_conf.get("switch", []), Switch)
                 + get_device_entries(full_conf.get("sensor", []), Sensor)
                 + get_device_entries(full_conf.get("binary_sensor", []), BinarySensor)
                 if ("name" in i) and not i.get("internal")

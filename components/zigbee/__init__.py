@@ -4,7 +4,7 @@ import re
 
 from esphome import automation
 import esphome.codegen as cg
-from esphome.components import switch, text_sensor
+from esphome.components import text_sensor
 from esphome.components.esp32 import (
     CONF_PARTITIONS,
     add_extra_script,
@@ -68,6 +68,7 @@ from .const import (
     CONF_SCALE,
     BinarySensor,
     Sensor,
+    Switch,
 )
 from .types import (
     ReportAction,
@@ -90,6 +91,7 @@ comp_ids = 0
 # dummies for upstream compatibility
 BINARY_SENSOR_SCHEMA = cv.Schema({})
 SENSOR_SCHEMA = cv.Schema({})
+SWITCH_SCHEMA = cv.Schema({})
 
 
 def validate_binary_sensor(x):
@@ -100,11 +102,19 @@ def validate_sensor(x):
     return x
 
 
+def validate_switch(x):
+    return x
+
+
 async def setup_binary_sensor(sensor, config):
     pass
 
 
 async def setup_sensor(sensor, config):
+    pass
+
+
+async def setup_switch(switch, config):
     pass
 
 
@@ -406,7 +416,7 @@ async def attributes_to_code(var, ep_num, cl):
                         [(cg.std_string, "x")],
                         return_type=get_c_type(attr[CONF_TYPE]),
                     )
-                elif device.base.type.inherits_from(switch.Switch):
+                elif device.base.type.inherits_from(Switch):
                     lambda_ = await cg.process_lambda(
                         attr[CONF_LAMBDA],
                         [(get_c_type(attr[CONF_TYPE]), "x")],
