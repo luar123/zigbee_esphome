@@ -328,8 +328,16 @@ void ZigBeeComponent::handle_report_attribute(uint8_t dst_endpoint, uint16_t clu
 }
 
 void ZigBeeComponent::create_default_cluster(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id) {
-  this->endpoint_list_[endpoint_id] = std::tuple<esp_zb_ha_standard_devices_t, esp_zb_cluster_list_t *>(
-      device_id, esphome_zb_default_clusters_create(device_id));
+  esp_zb_cluster_list_t *cluster_list = esphome_zb_default_clusters_create(device_id);
+  this->endpoint_list_[endpoint_id] =
+      std::tuple<esp_zb_ha_standard_devices_t, esp_zb_cluster_list_t *>(device_id, cluster_list);
+  // Add basic cluster
+  this->add_cluster(endpoint_id, ESP_ZB_ZCL_CLUSTER_ID_BASIC, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+  // Add identify cluster if not already present
+  if (esp_zb_cluster_list_get_cluster(cluster_list, ESP_ZB_ZCL_CLUSTER_ID_IDENTIFY, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE) ==
+      nullptr) {
+    this->add_cluster(endpoint_id, ESP_ZB_ZCL_CLUSTER_ID_IDENTIFY, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+  }
 }
 
 void ZigBeeComponent::add_cluster(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role) {
@@ -337,9 +345,6 @@ void ZigBeeComponent::add_cluster(uint8_t endpoint_id, uint16_t cluster_id, uint
   switch (cluster_id) {
     case 0:
       attr_list = create_basic_cluster_();
-      break;
-    case 3:
-      attr_list = create_ident_cluster_();
       break;
     default:
       attr_list = esphome_zb_default_attr_list_create(cluster_id);
@@ -396,19 +401,6 @@ esp_zb_attribute_list_t *ZigBeeComponent::create_basic_cluster_() {
   delete[] DateCode;
   delete[] Location;
   return attr_list;
-}
-
-void ZigBeeComponent::set_ident_time(uint8_t ident_time) {
-  // ------------------------------ Cluster IDENTIFY ------------------------------
-  this->ident_time_ = ident_time;
-}
-
-esp_zb_attribute_list_t *ZigBeeComponent::create_ident_cluster_() {
-  // ------------------------------ Cluster IDENTIFY ------------------------------
-  esp_zb_identify_cluster_cfg_t identify_cluster_cfg = {
-      .identify_time = this->ident_time_,
-  };
-  return esp_zb_identify_cluster_create(&identify_cluster_cfg);
 }
 
 esp_err_t ZigBeeComponent::create_endpoint(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id,

@@ -57,7 +57,6 @@ from .const import (
     CONF_CLUSTERS,
     CONF_DEVICE_TYPE,
     CONF_ENDPOINTS,
-    CONF_IDENT_TIME,
     CONF_MANUFACTURER,
     CONF_NUM,
     CONF_ON_JOIN,
@@ -244,7 +243,6 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(
                 CONF_DATE, default=datetime.datetime.now().strftime("%Y%m%d")
             ): cv.string,
-            cv.Optional(CONF_IDENT_TIME): cv.int_,
             cv.Optional(CONF_POWER_SUPPLY, default=0): cv.int_,  # make enum
             cv.Optional(CONF_VERSION, default=0): cv.int_,
             cv.Optional(CONF_AREA, default=0): cv.int_,  # make enum
@@ -504,23 +502,10 @@ async def to_code(config):
             config[CONF_AREA],
         )
     )
-    if CONF_IDENT_TIME in config:
-        cg.add(var.set_ident_time(config[CONF_IDENT_TIME]))
     for ep in ep_list:
         cg.add(
             var.create_default_cluster(ep[CONF_NUM], DEVICE_ID[ep[CONF_DEVICE_TYPE]])
         )
-        cg.add(
-            var.add_cluster(ep[CONF_NUM], CLUSTER_ID["BASIC"], CLUSTER_ROLE["SERVER"])
-        )
-        if CONF_IDENT_TIME in config:
-            cg.add(
-                var.add_cluster(
-                    ep[CONF_NUM],
-                    CLUSTER_ID["IDENTIFY"],
-                    CLUSTER_ROLE["SERVER"],
-                )
-            )
         for cl in ep.get(CONF_CLUSTERS, []):
             cg.add(
                 var.add_cluster(
