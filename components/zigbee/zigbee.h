@@ -63,7 +63,8 @@ class ZigBeeComponent : public Component {
  public:
   void setup() override;
   void dump_config() override;
-  esp_err_t create_endpoint(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id);
+  esp_err_t create_endpoint(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id,
+                            esp_zb_cluster_list_t *esp_zb_cluster_list);
   void set_ident_time(uint8_t ident_time);
   void set_basic_cluster(std::string model, std::string manufacturer, std::string date, uint8_t power,
                          uint8_t app_version, uint8_t stack_version, uint8_t hw_version, std::string area,
@@ -75,7 +76,6 @@ class ZigBeeComponent : public Component {
   void add_attr(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
                 uint8_t attr_type, uint8_t attr_access, uint8_t max_size, T value);
 
-  void set_report(ZigBeeAttribute *attribute, esp_zb_zcl_reporting_info_t reporting_info);
   void handle_attribute(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute);
   void handle_report_attribute(uint8_t dst_endpoint, uint16_t cluster, esp_zb_zcl_attribute_t attribute,
                                esp_zb_zcl_addr_t src_address, uint8_t src_endpoint);
@@ -101,7 +101,6 @@ class ZigBeeComponent : public Component {
   bool started_ = false;
 
   CallbackManager<void()> on_join_callback_{};
-  std::deque<std::tuple<ZigBeeAttribute *, esp_zb_zcl_reporting_info_t>> reporting_list;
   struct {
     std::string model;
     std::string manufacturer;
@@ -125,8 +124,7 @@ class ZigBeeComponent : public Component {
   template<typename T>
   void add_attr_(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
                  uint8_t attr_type, uint8_t attr_access, T *value_p);
-  std::map<uint8_t, esp_zb_ha_standard_devices_t> endpoint_list_;
-  std::map<uint8_t, esp_zb_cluster_list_t *> cluster_list_;
+  std::map<uint8_t, std::tuple<esp_zb_ha_standard_devices_t, esp_zb_cluster_list_t *>> endpoint_list_;
   std::map<std::tuple<uint8_t, uint16_t, uint8_t>, esp_zb_attribute_list_t *> attribute_list_;
   std::map<std::tuple<uint8_t, uint16_t, uint8_t, uint16_t>, ZigBeeAttribute *> attributes_;
   esp_zb_ep_list_t *esp_zb_ep_list_ = esp_zb_ep_list_create();

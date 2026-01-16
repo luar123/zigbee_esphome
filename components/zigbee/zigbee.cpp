@@ -49,12 +49,8 @@ static void bdb_start_top_level_commissioning_cb(uint8_t mode_mask) {
   }
 }
 
-void ZigBeeComponent::set_report(ZigBeeAttribute *attribute, esp_zb_zcl_reporting_info_t reporting_info) {
-  this->reporting_list.push_back(std::make_tuple(attribute, reporting_info));
-}
-
 void ZigBeeComponent::report() {
-  for (const auto &[attribute, _] : zigbeeC->reporting_list) {
+  for (const auto &[_, attribute] : this->attributes_) {
     attribute->report();
   }
 }
@@ -283,6 +279,40 @@ void ZigBeeComponent::handle_attribute(esp_zb_device_cb_common_info_t info, esp_
       this->attributes_.end()) {
     this->attributes_[{info.dst_endpoint, info.cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, attribute.id}]->on_value(
         attribute);
+    // if the attribute is On/Off and it is set to Off, restore the previous level
+    if (info.cluster == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF) {
+      if (attribute.id == ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID && attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_BOOL &&
+          !*(bool *) attribute.data.value) {
+        ESP_LOGD(TAG, "turned off");
+        if (this->attributes_.find({info.dst_endpoint, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+                                    ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID}) !=
+            this->attributes_.end()) {
+          ESP_LOGD(TAG, "found level");
+          esp_zb_zcl_attr_t *current_level =
+              esp_zb_zcl_get_attribute(info.dst_endpoint, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+                                       ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID);
+          if (current_level) {
+            ESP_LOGD(TAG, "got level");
+            esp_zb_zcl_set_attribute_val(info.dst_endpoint, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+                                         ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
+                                         current_level->data_p, false);
+            esp_zb_zcl_attribute_t lvl_attr = {
+                .id = ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
+                .data =
+                    {
+                        .type = ESP_ZB_ZCL_ATTR_TYPE_U8,
+                        .size = sizeof(uint8_t),
+                        .value = current_level->data_p,
+                    },
+            };
+            this->attributes_[{info.dst_endpoint, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+                               ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID}]
+                ->on_value(lvl_attr);
+            ESP_LOGD(TAG, "Light set to restore-level: %d", *(uint8_t *) current_level->data_p);
+          }
+        }
+      }
+    }
   }
 }
 
@@ -298,8 +328,8 @@ void ZigBeeComponent::handle_report_attribute(uint8_t dst_endpoint, uint16_t clu
 }
 
 void ZigBeeComponent::create_default_cluster(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id) {
-  this->cluster_list_[endpoint_id] = esphome_zb_default_clusters_create(device_id);
-  this->endpoint_list_[endpoint_id] = device_id;
+  this->endpoint_list_[endpoint_id] = std::tuple<esp_zb_ha_standard_devices_t, esp_zb_cluster_list_t *>(
+      device_id, esphome_zb_default_clusters_create(device_id));
 }
 
 void ZigBeeComponent::add_cluster(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role) {
@@ -381,8 +411,8 @@ esp_zb_attribute_list_t *ZigBeeComponent::create_ident_cluster_() {
   return esp_zb_identify_cluster_create(&identify_cluster_cfg);
 }
 
-esp_err_t ZigBeeComponent::create_endpoint(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id) {
-  esp_zb_cluster_list_t *esp_zb_cluster_list = this->cluster_list_[endpoint_id];
+esp_err_t ZigBeeComponent::create_endpoint(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id,
+                                           esp_zb_cluster_list_t *esp_zb_cluster_list) {
   // ------------------------------ Create endpoint list ------------------------------
   esp_zb_endpoint_config_t endpoint_config = {.endpoint = endpoint_id,
                                               .app_profile_id = ESP_ZB_AF_HA_PROFILE_ID,
@@ -449,18 +479,19 @@ void ZigBeeComponent::setup() {
 
   // clusters
   for (auto const &[key, val] : this->attribute_list_) {
-    esp_zb_cluster_list_t *esp_zb_cluster_list = this->cluster_list_[std::get<0>(key)];
+    esp_zb_cluster_list_t *esp_zb_cluster_list = std::get<1>(this->endpoint_list_[std::get<0>(key)]);
     ret = esphome_zb_cluster_list_add_or_update_cluster(std::get<1>(key), esp_zb_cluster_list, val, std::get<2>(key));
     if (ret != ESP_OK) {
       ESP_LOGE(TAG, "Could not create cluster 0x%04X with role %u: %s", std::get<1>(key), std::get<2>(key),
                esp_err_to_name(ret));
     }
   }
+  this->attribute_list_.clear();
 
   // endpoints
-  for (auto const &[ep_id, dev_id] : this->endpoint_list_) {
+  for (auto const &[ep_id, dev] : this->endpoint_list_) {
     // create_default_cluster(key, val);
-    if (create_endpoint(ep_id, dev_id) != ESP_OK) {
+    if (create_endpoint(ep_id, std::get<0>(dev), std::get<1>(dev)) != ESP_OK) {
       ESP_LOGE(TAG, "Could not create endpoint %u", ep_id);
     }
   }
@@ -481,11 +512,14 @@ void ZigBeeComponent::setup() {
   }
 
   // reporting
-  for (auto &[_, reporting_info] : this->reporting_list) {
-    ESP_LOGD(TAG, "set reporting for cluster: %u", reporting_info.cluster_id);
-    if (esp_zb_zcl_update_reporting_info(&reporting_info) != ESP_OK) {
-      ESP_LOGE(TAG, "Could not configure reporting for attribute 0x%04X in cluster 0x%04X in endpoint %u",
-               reporting_info.attr_id, reporting_info.cluster_id, reporting_info.ep);
+  for (auto &[_, attribute] : this->attributes_) {
+    if (attribute->report_enabled) {
+      esp_zb_zcl_reporting_info_t reporting_info = attribute->get_reporting_info();
+      ESP_LOGD(TAG, "set reporting for cluster: %u", reporting_info.cluster_id);
+      if (esp_zb_zcl_update_reporting_info(&reporting_info) != ESP_OK) {
+        ESP_LOGE(TAG, "Could not configure reporting for attribute 0x%04X in cluster 0x%04X in endpoint %u",
+                 reporting_info.attr_id, reporting_info.cluster_id, reporting_info.ep);
+      }
     }
   }
   xTaskCreate(esp_zb_task_, "Zigbee_main", 4096, NULL, 24, NULL);
@@ -494,7 +528,7 @@ void ZigBeeComponent::setup() {
 void ZigBeeComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "ZigBee:");
   for (auto const &[key, val] : this->endpoint_list_) {
-    ESP_LOGCONFIG(TAG, "Endpoint: %u, %d", key, val);
+    ESP_LOGCONFIG(TAG, "Endpoint: %u, %d", key, std::get<0>(val));
   }
 }
 

@@ -45,6 +45,7 @@ class ZigBeeAttribute : public Component {
   void loop() override;
 
   template<typename T> void add_attr(uint8_t attr_access, uint8_t max_size, T value);
+  esp_zb_zcl_reporting_info_t get_reporting_info();
   void set_report(bool force);
   void report();
   template<typename T> void set_attr(const T &value);
@@ -64,6 +65,7 @@ class ZigBeeAttribute : public Component {
   void on_report(esp_zb_zcl_attribute_t attribute, esp_zb_zcl_addr_t src_address, uint8_t src_endpoint) {
     this->on_report_callback_.call(attribute, src_address, src_endpoint);
   }
+  bool report_enabled = false;
 
 #ifdef USE_SENSOR
   template<typename T> void connect(sensor::Sensor *sensor);
