@@ -445,14 +445,8 @@ def create_device_ep(eps, dev, generic=False):
     elif dev["id"].type.inherits_from(BinarySensor):
         ep.update(copy.deepcopy(ep_configs["binary_input"]))
     elif dev["id"].type.inherits_from(light.LightState):
-        if dev["platform"] in ["binary", "status_led"] or (
-            "output" in dev and dev["output"].type.inherits_from(output.BinaryOutput)
-        ):
-            if generic:
-                ep.update(copy.deepcopy(ep_configs["binary_output"]))
-            else:
-                ep.update(copy.deepcopy(ep_configs["on_off_light"]))
-        elif (
+        # NB: output.FloatOutput is a subclass of output.BinaryOutput thus must be checked first
+        if (
             dev["platform"] in ["monochromatic"]
             or "dimmer" in dev["platform"]
             or (
@@ -466,6 +460,13 @@ def create_device_ep(eps, dev, generic=False):
                 )
             else:
                 ep.update(copy.deepcopy(ep_configs["level_light"]))
+        elif dev["platform"] in ["binary", "status_led"] or (
+            "output" in dev and dev["output"].type.inherits_from(output.BinaryOutput)
+        ):
+            if generic:
+                ep.update(copy.deepcopy(ep_configs["binary_output"]))
+            else:
+                ep.update(copy.deepcopy(ep_configs["on_off_light"]))
         else:
             ep.update(copy.deepcopy(ep_configs["color_light"]))
     for cl in ep.get(CONF_CLUSTERS, []):
