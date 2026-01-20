@@ -177,7 +177,8 @@ def validate_string_attributes(config):
             raise cv.Invalid(
                 f"The '{CONF_MAX_LENGTH}' parameter is mandatory for string attributes."
             )
-
+        if config[CONF_MAX_LENGTH] == 0:
+            config[CONF_MAX_LENGTH] = len(config.get(CONF_VALUE, ""))
         # Check that size of default value matches CONF_MAX_LENGTH
         if len(config[CONF_VALUE]) > config[CONF_MAX_LENGTH]:
             raise cv.Invalid(
@@ -197,6 +198,16 @@ def validate_attributes(config):
         else 0
     )
     validate_string_attributes(config)
+    if (CONF_ID not in config) and (
+        CONF_DEVICE in config or CONF_ON_VALUE in config or CONF_ON_REPORT in config
+    ):
+        config[CONF_ID] = cv.declare_id(ZigBeeAttribute)(None)
+    elif all(
+        i not in config for i in [CONF_ID, CONF_DEVICE, CONF_ON_VALUE, CONF_ON_REPORT]
+    ) and (config[CONF_SCALE] != 1.0 or CONF_LAMBDA in config or config[CONF_REPORT]):
+        raise cv.Invalid(
+            f"Parameters {CONF_SCALE}', '{CONF_LAMBDA}' or '{CONF_REPORT}' are not allowed without '{CONF_ID}', '{CONF_DEVICE}', '{CONF_ON_VALUE}' or '{CONF_ON_REPORT}'."
+        )
 
     return config
 
@@ -271,7 +282,7 @@ CONFIG_SCHEMA = cv.All(
                                     cv.Optional(CONF_ATTRIBUTES): cv.ensure_list(
                                         cv.Schema(
                                             {
-                                                cv.GenerateID(): cv.declare_id(
+                                                cv.Optional(CONF_ID): cv.declare_id(
                                                     ZigBeeAttribute
                                                 ),
                                                 cv.Required(CONF_ATTRIBUTE_ID): cv.int_,
@@ -363,6 +374,20 @@ def find_attr(conf, id):
 
 async def attributes_to_code(var, ep_num, cl):
     for attr in cl.get(CONF_ATTRIBUTES, []):
+        if attr.get(CONF_ID) is None:
+            cg.add(
+                var.add_attr(
+                    ep_num,
+                    CLUSTER_ID.get(cl[CONF_ID], cl[CONF_ID]),
+                    cl[CONF_ROLE],
+                    attr[CONF_ATTRIBUTE_ID],
+                    ATTR_TYPE[attr[CONF_TYPE]],
+                    attr[CONF_ACCESS],
+                    attr.get(CONF_MAX_LENGTH, 0),
+                    attr[CONF_VALUE],
+                )
+            )
+            continue
         attr_var = cg.new_Pvariable(
             attr[CONF_ID],
             var,

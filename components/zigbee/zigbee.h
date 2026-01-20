@@ -2,7 +2,6 @@
 
 #include <map>
 #include <tuple>
-#include <deque>
 
 #include "esp_zigbee_core.h"
 #include "zboss_api.h"
@@ -75,6 +74,10 @@ class ZigBeeComponent : public Component {
   void add_attr(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
                 uint8_t attr_type, uint8_t attr_access, uint8_t max_size, T value);
 
+  template<typename T>
+  void add_attr(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id, uint8_t attr_type,
+                uint8_t attr_access, uint8_t max_size, T value);
+
   void handle_attribute(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute);
   void handle_report_attribute(uint8_t dst_endpoint, uint16_t cluster, esp_zb_zcl_attribute_t attribute,
                                esp_zb_zcl_addr_t src_address, uint8_t src_endpoint);
@@ -118,7 +121,6 @@ class ZigBeeComponent : public Component {
 #endif
 
  protected:
-  esp_zb_attribute_list_t *create_ident_cluster_();
   esp_zb_attribute_list_t *create_basic_cluster_();
   template<typename T>
   void add_attr_(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
@@ -132,6 +134,12 @@ class ZigBeeComponent : public Component {
 
 extern "C" void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct);
 extern "C" void zb_set_ed_node_descriptor(bool power_src, bool rx_on_when_idle, bool alloc_addr);
+
+template<typename T>
+void ZigBeeComponent::add_attr(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
+                               uint8_t attr_type, uint8_t attr_access, uint8_t max_size, T value) {
+  this->add_attr<T>(nullptr, endpoint_id, cluster_id, role, attr_id, attr_type, attr_access, max_size, value);
+}
 
 template<typename T>
 void ZigBeeComponent::add_attr(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role,
@@ -161,7 +169,9 @@ void ZigBeeComponent::add_attr_(ZigBeeAttribute *attr, uint8_t endpoint_id, uint
     ESP_LOGE(TAG, "Could not add attribute 0x%04X to cluster 0x%04X in endpoint %u: %s", attr_id, cluster_id,
              endpoint_id, esp_err_to_name(ret));
   }
-  this->attributes_[{endpoint_id, cluster_id, role, attr_id}] = attr;
+  if (attr != nullptr) {
+    this->attributes_[{endpoint_id, cluster_id, role, attr_id}] = attr;
+  }
 }
 
 }  // namespace zigbee

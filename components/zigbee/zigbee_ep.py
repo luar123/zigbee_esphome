@@ -471,8 +471,6 @@ def create_device_ep(eps, dev, generic=False):
             ep.update(copy.deepcopy(ep_configs["color_light"]))
     for cl in ep.get(CONF_CLUSTERS, []):
         for attr in cl[CONF_ATTRIBUTES]:
-            if CONF_DEVICE in attr:  # connect device
-                attr[CONF_DEVICE] = dev["id"]
             if (
                 attr[CONF_ATTRIBUTE_ID] == 0x1C
                 and CONF_VALUE not in attr
@@ -481,10 +479,15 @@ def create_device_ep(eps, dev, generic=False):
                 name = dev["name"].encode("ascii", "ignore").decode()  # use unidecode
                 attr[CONF_VALUE] = str(name)
                 attr[CONF_MAX_LENGTH] = len(str(name))
-            id = ID(None, is_declaration=True, type=ZigBeeAttribute)
-            id.resolve(CORE.component_ids)
-            CORE.component_ids.add(id.id)
-            attr[CONF_ID] = id
+            if CONF_DEVICE in attr:  # connect device
+                attr[CONF_DEVICE] = dev["id"]
+                # create attribute ID
+                id = ID(None, is_declaration=True, type=ZigBeeAttribute)
+                id.resolve(CORE.component_ids)
+                CORE.component_ids.add(id.id)
+                attr[CONF_ID] = id
+            else:
+                attr[CONF_ID] = None
     return ep
 
 
