@@ -23,6 +23,23 @@ class ZigBeeJoinTrigger : public Trigger<> {
   }
 };
 
+class ZigbeeIdentifyEffectTrigger : public Trigger<uint8_t, uint8_t> {
+ public:
+  explicit ZigbeeIdentifyEffectTrigger(ZigBeeComponent *parent) {
+    parent->on_identify_effect_callback_.add(
+        [this](uint8_t effect_id, uint8_t effect_variant) { this->trigger(effect_id, effect_variant); });
+  }
+};
+
+class ZigbeeCustomCommandTrigger : public Trigger<uint16_t, uint8_t, uint16_t, void *> {
+ public:
+  explicit ZigbeeCustomCommandTrigger(ZigBeeComponent *parent) {
+    parent->on_custom_command_callback_.add([this](uint16_t cluster_id, uint8_t command_id, uint16_t size, void *value) {
+      this->trigger(cluster_id, command_id, size, value);
+    });
+  }
+};
+
 template<typename... Ts> class ResetZigbeeAction : public Action<Ts...>, public Parented<ZigBeeComponent> {
  public:
 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)

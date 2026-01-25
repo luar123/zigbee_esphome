@@ -11,6 +11,13 @@ ZigBeeOnValueTrigger = zigbee_ns.class_(
 ZigBeeOnReportTrigger = zigbee_ns.class_(
     "ZigBeeOnReportTrigger", automation.Trigger.template(int), cg.Component
 )
+ZigbeeIdentifyEffectTrigger = zigbee_ns.class_(
+    "ZigbeeIdentifyEffectTrigger", automation.Trigger.template(cg.uint8, cg.uint8)
+)
+ZigbeeCustomCommandTrigger = zigbee_ns.class_(
+    "ZigbeeCustomCommandTrigger",
+    automation.Trigger.template(cg.uint16, cg.uint8, cg.uint16, cg.RawExpression("void *")),
+)
 ResetZigbeeAction = zigbee_ns.class_(
     "ResetZigbeeAction", automation.Action, cg.Parented.template(ZigBeeComponent)
 )

@@ -268,6 +268,19 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
     case ESP_ZB_CORE_REPORT_ATTR_CB_ID:
       ret = zb_report_attribute_handler((esp_zb_zcl_report_attr_message_t *) message);
       break;
+    case ESP_ZB_CORE_IDENTIFY_EFFECT_CB_ID: {
+      esp_zb_zcl_identify_effect_message_t *msg = (esp_zb_zcl_identify_effect_message_t *) message;
+      ESP_LOGD(TAG, "Receive Identify Effect: effect_id(0x%x), variant(0x%x)", msg->effect_id, msg->effect_variant);
+      zigbeeC->handle_identify_effect(msg->info.dst_endpoint, msg->effect_id, msg->effect_variant);
+      break;
+    }
+    case ESP_ZB_CORE_CMD_CUSTOM_CLUSTER_REQ_CB_ID: {
+      esp_zb_zcl_custom_cluster_command_message_t *msg = (esp_zb_zcl_custom_cluster_command_message_t *) message;
+      ESP_LOGD(TAG, "Receive Custom Cluster command: cluster(0x%x), command(0x%x)", msg->info.cluster,
+               msg->info.command.id);
+      zigbeeC->handle_custom_command(msg);
+      break;
+    }
     case ESP_ZB_CORE_CMD_DEFAULT_RESP_CB_ID:
       ESP_LOGD(TAG, "Receive Zigbee default response callback");
       break;
@@ -295,6 +308,15 @@ void ZigBeeComponent::handle_report_attribute(uint8_t dst_endpoint, uint16_t clu
     return;
   }
   attr->second->on_report(attribute, src_address, src_endpoint);
+}
+
+void ZigBeeComponent::handle_identify_effect(uint8_t endpoint, uint8_t effect_id, uint8_t effect_variant) {
+  this->on_identify_effect_callback_.call(effect_id, effect_variant);
+}
+
+void ZigBeeComponent::handle_custom_command(esp_zb_zcl_custom_cluster_command_message_t *message) {
+  this->on_custom_command_callback_.call(message->info.cluster, message->info.command.id, message->data.size,
+                                         message->data.value);
 }
 
 void ZigBeeComponent::create_default_cluster(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id) {

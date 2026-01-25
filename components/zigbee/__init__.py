@@ -65,6 +65,8 @@ from .const import (
     CONF_REPORT,
     CONF_ROLE,
     CONF_ROUTER,
+    CONF_ON_IDENTIFY_EFFECT,
+    CONF_ON_CUSTOM_COMMAND,
     CONF_SCALE,
     BinarySensor,
     Sensor,
@@ -78,6 +80,8 @@ from .types import (
     ZigBeeAttribute,
     ZigBeeComponent,
     ZigBeeJoinTrigger,
+    ZigbeeIdentifyEffectTrigger,
+    ZigbeeCustomCommandTrigger,
     ZigBeeOnReportTrigger,
     ZigBeeOnValueTrigger,
 )
@@ -340,6 +344,20 @@ CONFIG_SCHEMA = cv.All(
                     cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ZigBeeJoinTrigger),
                 }
             ),
+            cv.Optional(CONF_ON_IDENTIFY_EFFECT): automation.validate_automation(
+                {
+                    cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(
+                        ZigbeeIdentifyEffectTrigger
+                    ),
+                }
+            ),
+            cv.Optional(CONF_ON_CUSTOM_COMMAND): automation.validate_automation(
+                {
+                    cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(
+                        ZigbeeCustomCommandTrigger
+                    ),
+                }
+            ),
         }
     ).extend(cv.COMPONENT_SCHEMA),
     cv.require_framework_version(esp_idf=cv.Version(5, 1, 2)),
@@ -534,6 +552,23 @@ async def to_code(config):
     for conf in config.get(CONF_ON_JOIN, []):
         trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
         await automation.build_automation(trigger, [], conf)
+
+    for conf in config.get(CONF_ON_IDENTIFY_EFFECT, []):
+        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        await automation.build_automation(trigger, [(cg.uint8, "effect_id"), (cg.uint8, "effect_variant")], conf)
+
+    for conf in config.get(CONF_ON_CUSTOM_COMMAND, []):
+        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        await automation.build_automation(
+            trigger,
+            [
+                (cg.uint16, "cluster_id"),
+                (cg.uint8, "command_id"),
+                (cg.uint16, "size"),
+                (cg.RawExpression("void *"), "value"),
+            ],
+            conf,
+        )
 
 
 ZIGBEE_ACTION_SCHEMA = cv.Schema(
