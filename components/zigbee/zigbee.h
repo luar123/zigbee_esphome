@@ -11,6 +11,7 @@
 #include "esphome/core/component.h"
 #include "esphome/core/defines.h"
 #include "esphome/core/log.h"
+#include "esphome/core/preferences.h"
 #include "zigbee_helpers.h"
 
 #ifdef USE_ZIGBEE_TIME
@@ -65,6 +66,8 @@ class ZigBeeComponent : public Component {
   void dump_config() override;
   esp_err_t create_endpoint(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id);
   void set_ident_time(uint8_t ident_time);
+  void set_channels(uint32_t mask) { this->channel_mask_ = mask; }
+  void set_stack_size(uint32_t stack_size) { this->stack_size_ = stack_size; }
   void set_basic_cluster(std::string model, std::string manufacturer, std::string date, uint8_t power,
                          uint8_t app_version, uint8_t stack_version, uint8_t hw_version, std::string area,
                          uint8_t physical_env);
@@ -79,6 +82,8 @@ class ZigBeeComponent : public Component {
   void handle_attribute(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute);
   void handle_report_attribute(uint8_t dst_endpoint, uint16_t cluster, esp_zb_zcl_attribute_t attribute,
                                esp_zb_zcl_addr_t src_address, uint8_t src_endpoint);
+  void handle_identify_effect(uint8_t endpoint, uint8_t effect_id, uint8_t effect_variant);
+  void handle_custom_command(esp_zb_zcl_custom_cluster_command_message_t *message);
   void searchBindings();
   static void bindingTableCb(const esp_zb_zdo_binding_table_info_t *table_info, void *user_ctx);
 
@@ -101,6 +106,8 @@ class ZigBeeComponent : public Component {
   bool started_ = false;
 
   CallbackManager<void()> on_join_callback_{};
+  CallbackManager<void(uint8_t, uint8_t)> on_identify_effect_callback_{};
+  CallbackManager<void(uint16_t, uint8_t, uint16_t, void *)> on_custom_command_callback_{};
   std::deque<std::tuple<ZigBeeAttribute *, esp_zb_zcl_reporting_info_t>> reporting_list;
   struct {
     std::string model;
@@ -131,6 +138,10 @@ class ZigBeeComponent : public Component {
   std::map<std::tuple<uint8_t, uint16_t, uint8_t, uint16_t>, ZigBeeAttribute *> attributes_;
   esp_zb_ep_list_t *esp_zb_ep_list_ = esp_zb_ep_list_create();
   uint8_t ident_time_;
+  uint32_t channel_mask_ = ESP_ZB_PRIMARY_CHANNEL_MASK;
+  uint32_t stack_size_{4096};
+  ESPPreferenceObject pref_;
+  uint8_t channel_ = 0;
 };
 
 extern "C" void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct);

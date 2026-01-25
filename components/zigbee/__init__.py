@@ -58,6 +58,8 @@ from .const import (
     CONF_DEVICE_TYPE,
     CONF_ENDPOINTS,
     CONF_IDENT_TIME,
+    CONF_CHANNELS,
+    CONF_STACK_SIZE,
     CONF_MANUFACTURER,
     CONF_NUM,
     CONF_ON_JOIN,
@@ -65,6 +67,8 @@ from .const import (
     CONF_REPORT,
     CONF_ROLE,
     CONF_ROUTER,
+    CONF_ON_IDENTIFY_EFFECT,
+    CONF_ON_CUSTOM_COMMAND,
     CONF_SCALE,
     BinarySensor,
     Sensor,
@@ -78,6 +82,8 @@ from .types import (
     ZigBeeAttribute,
     ZigBeeComponent,
     ZigBeeJoinTrigger,
+    ZigbeeIdentifyEffectTrigger,
+    ZigbeeCustomCommandTrigger,
     ZigBeeOnReportTrigger,
     ZigBeeOnValueTrigger,
 )
@@ -249,6 +255,8 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_VERSION, default=0): cv.int_,
             cv.Optional(CONF_AREA, default=0): cv.int_,  # make enum
             cv.Optional(CONF_ROUTER, default=False): cv.boolean,
+            cv.Optional(CONF_CHANNELS): cv.string,
+            cv.Optional(CONF_STACK_SIZE, default=4096): cv.int_,
             cv.Optional(CONF_DEBUG, default=False): cv.boolean,
             cv.Optional(CONF_COMPONENTS): cv.Any(
                 cv.one_of("all", "none", lower=True),
@@ -338,6 +346,20 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_ON_JOIN): automation.validate_automation(
                 {
                     cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ZigBeeJoinTrigger),
+                }
+            ),
+            cv.Optional(CONF_ON_IDENTIFY_EFFECT): automation.validate_automation(
+                {
+                    cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(
+                        ZigbeeIdentifyEffectTrigger
+                    ),
+                }
+            ),
+            cv.Optional(CONF_ON_CUSTOM_COMMAND): automation.validate_automation(
+                {
+                    cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(
+                        ZigbeeCustomCommandTrigger
+                    ),
                 }
             ),
         }
@@ -506,6 +528,20 @@ async def to_code(config):
     )
     if CONF_IDENT_TIME in config:
         cg.add(var.set_ident_time(config[CONF_IDENT_TIME]))
+    if CONF_CHANNELS in config:
+        # Simple mask parsing if it's a list or single channel
+        # For simplicity in this common contribution, we assume a single channel string for now
+        # or a mask. Matching user's previous usage.
+        channels = config[CONF_CHANNELS]
+        if channels.isdigit():
+            mask = 1 << int(channels)
+        else:
+            # Handle list-like strings or hex if needed? 
+            # Sticking to what was tested earlier: "15" -> 1 << 15
+            mask = 1 << int(channels)
+        cg.add(var.set_channels(mask))
+    if CONF_STACK_SIZE in config:
+        cg.add(var.set_stack_size(config[CONF_STACK_SIZE]))
     for ep in ep_list:
         cg.add(
             var.create_default_cluster(ep[CONF_NUM], DEVICE_ID[ep[CONF_DEVICE_TYPE]])
@@ -534,6 +570,23 @@ async def to_code(config):
     for conf in config.get(CONF_ON_JOIN, []):
         trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
         await automation.build_automation(trigger, [], conf)
+
+    for conf in config.get(CONF_ON_IDENTIFY_EFFECT, []):
+        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        await automation.build_automation(trigger, [(cg.uint8, "effect_id"), (cg.uint8, "effect_variant")], conf)
+
+    for conf in config.get(CONF_ON_CUSTOM_COMMAND, []):
+        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        await automation.build_automation(
+            trigger,
+            [
+                (cg.uint16, "cluster_id"),
+                (cg.uint8, "command_id"),
+                (cg.uint16, "size"),
+                (cg.RawExpression("void *"), "value"),
+            ],
+            conf,
+        )
 
 
 ZIGBEE_ACTION_SCHEMA = cv.Schema(

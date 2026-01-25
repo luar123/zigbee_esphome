@@ -106,6 +106,8 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
                  extended_pan_id[7], extended_pan_id[6], extended_pan_id[5], extended_pan_id[4], extended_pan_id[3],
                  extended_pan_id[2], extended_pan_id[1], extended_pan_id[0], esp_zb_get_pan_id(),
                  esp_zb_get_current_channel());
+        zigbeeC->channel_ = esp_zb_get_current_channel();
+        zigbeeC->pref_.save(&zigbeeC->channel_);
         zigbeeC->on_join_callback_.call();
         zigbeeC->connected_ = true;
       } else {
@@ -268,6 +270,19 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
     case ESP_ZB_CORE_REPORT_ATTR_CB_ID:
       ret = zb_report_attribute_handler((esp_zb_zcl_report_attr_message_t *) message);
       break;
+    case ESP_ZB_CORE_IDENTIFY_EFFECT_CB_ID: {
+      esp_zb_zcl_identify_effect_message_t *msg = (esp_zb_zcl_identify_effect_message_t *) message;
+      ESP_LOGD(TAG, "Receive Identify Effect: effect_id(0x%x), variant(0x%x)", msg->effect_id, msg->effect_variant);
+      zigbeeC->handle_identify_effect(msg->info.dst_endpoint, msg->effect_id, msg->effect_variant);
+      break;
+    }
+    case ESP_ZB_CORE_CMD_CUSTOM_CLUSTER_REQ_CB_ID: {
+      esp_zb_zcl_custom_cluster_command_message_t *msg = (esp_zb_zcl_custom_cluster_command_message_t *) message;
+      ESP_LOGD(TAG, "Receive Custom Cluster command: cluster(0x%x), command(0x%x)", msg->info.cluster,
+               msg->info.command.id);
+      zigbeeC->handle_custom_command(msg);
+      break;
+    }
     case ESP_ZB_CORE_CMD_DEFAULT_RESP_CB_ID:
       ESP_LOGD(TAG, "Receive Zigbee default response callback");
       break;
@@ -295,6 +310,15 @@ void ZigBeeComponent::handle_report_attribute(uint8_t dst_endpoint, uint16_t clu
     return;
   }
   attr->second->on_report(attribute, src_address, src_endpoint);
+}
+
+void ZigBeeComponent::handle_identify_effect(uint8_t endpoint, uint8_t effect_id, uint8_t effect_variant) {
+  this->on_identify_effect_callback_.call(effect_id, effect_variant);
+}
+
+void ZigBeeComponent::handle_custom_command(esp_zb_zcl_custom_cluster_command_message_t *message) {
+  this->on_custom_command_callback_.call(message->info.cluster, message->info.command.id, message->data.size,
+                                         message->data.value);
 }
 
 void ZigBeeComponent::create_default_cluster(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id) {
@@ -414,6 +438,13 @@ void ZigBeeComponent::setup() {
       .radio_config = ESP_ZB_DEFAULT_RADIO_CONFIG(),
       .host_config = ESP_ZB_DEFAULT_HOST_CONFIG(),
   };
+  this->pref_ = global_preferences->make_preference<uint8_t>(2024012501UL);
+  if (this->pref_.load(&this->channel_)) {
+    if (this->channel_mask_ == ESP_ZB_PRIMARY_CHANNEL_MASK) {
+      this->channel_mask_ = (1 << this->channel_);
+      ESP_LOGD(TAG, "Loaded channel %d from preferences", this->channel_);
+    }
+  }
 #ifdef CONFIG_WIFI_COEX
   if (esp_coex_wifi_i154_enable() != ESP_OK) {
     this->mark_failed();
@@ -474,7 +505,7 @@ void ZigBeeComponent::setup() {
 
   esp_zb_core_action_handler_register(zb_action_handler);
 
-  if (esp_zb_set_primary_network_channel_set(ESP_ZB_PRIMARY_CHANNEL_MASK) != ESP_OK) {
+  if (esp_zb_set_primary_network_channel_set(this->channel_mask_) != ESP_OK) {
     ESP_LOGE(TAG, "Could not setup Zigbee");
     this->mark_failed();
     return;
@@ -488,7 +519,7 @@ void ZigBeeComponent::setup() {
                reporting_info.attr_id, reporting_info.cluster_id, reporting_info.ep);
     }
   }
-  xTaskCreate(esp_zb_task_, "Zigbee_main", 4096, NULL, 24, NULL);
+  xTaskCreate(esp_zb_task_, "Zigbee_main", this->stack_size_, NULL, 24, NULL);
 }
 
 void ZigBeeComponent::dump_config() {
