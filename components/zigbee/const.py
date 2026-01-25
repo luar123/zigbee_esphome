@@ -23,6 +23,8 @@ CONF_AS_GENERIC = "as_generic"
 CONF_ON_REPORT = "on_report"
 CONF_ON_IDENTIFY_EFFECT = "on_identify_effect"
 CONF_ON_CUSTOM_COMMAND = "on_custom_command"
+CONF_CHANNELS = "channels"
+CONF_STACK_SIZE = "stack_size"
 
 # dummies for upstream compatibility
 binary_sensor_ns = cg.esphome_ns.namespace("binary_sensor")
