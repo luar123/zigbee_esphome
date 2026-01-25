@@ -21,6 +21,8 @@ CONF_ZIGBEE_ID = "zigbee_id"
 CONF_ROUTER = "router"
 CONF_AS_GENERIC = "as_generic"
 CONF_ON_REPORT = "on_report"
+CONF_CHANNELS = "channels"
+CONF_STACK_SIZE = "stack_size"
 
 # dummies for upstream compatibility
 binary_sensor_ns = cg.esphome_ns.namespace("binary_sensor")
