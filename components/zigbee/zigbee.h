@@ -109,6 +109,7 @@ class ZigBeeComponent : public Component {
   bool is_connected() { return this->connected_; }
   bool connected_ = false;
   bool started_ = false;
+  bool joined_ = false;
 
   CallbackManager<void()> on_join_callback_{};
   struct {

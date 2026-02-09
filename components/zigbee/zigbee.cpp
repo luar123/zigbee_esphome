@@ -102,8 +102,8 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
                  extended_pan_id[7], extended_pan_id[6], extended_pan_id[5], extended_pan_id[4], extended_pan_id[3],
                  extended_pan_id[2], extended_pan_id[1], extended_pan_id[0], esp_zb_get_pan_id(),
                  esp_zb_get_current_channel());
-        global_zigbee->on_join_callback_.call();
-        global_zigbee->connected_ = true;
+        global_zigbee->joined_ = true;
+        global_zigbee->enable_loop_soon_any_context();
       } else {
         ESP_LOGI(TAG, "Network steering was not successful (status: %s)", esp_err_to_name(err_status));
         if (steering_retry_count < 10) {
@@ -563,6 +563,7 @@ void ZigBeeComponent::setup() {
     }
   }
   xTaskCreate(esp_zb_task_, "Zigbee_main", 4096, NULL, 24, NULL);
+  this->disable_loop();  // loop is only needed for processing events, so disable until we join a network
 }
 
 void ZigBeeComponent::loop() {
@@ -598,7 +599,14 @@ void ZigBeeComponent::loop() {
   if (dropped > 0) {
     ESP_LOGW(TAG, "Dropped %u Zigbee events due to buffer overflow", dropped);
   }
-  this->disable_loop();
+
+  if (this->joined_) {
+    this->on_join_callback_.call();
+    this->joined_ = false;  // only call once
+    this->connected_ = true;
+  } else if (this->connected_) {
+    this->disable_loop();  // only disable once connected
+  }
 }
 
 void ZigBeeComponent::dump_config() {
