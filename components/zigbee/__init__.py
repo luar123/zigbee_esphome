@@ -379,7 +379,7 @@ async def attributes_to_code(var, ep_num, cl):
                 var.add_attr(
                     ep_num,
                     CLUSTER_ID.get(cl[CONF_ID], cl[CONF_ID]),
-                    cl[CONF_ROLE],
+                    CLUSTER_ROLE[cl[CONF_ROLE]],
                     attr[CONF_ATTRIBUTE_ID],
                     ATTR_TYPE[attr[CONF_TYPE]],
                     attr[CONF_ACCESS],
@@ -393,7 +393,7 @@ async def attributes_to_code(var, ep_num, cl):
             var,
             ep_num,
             CLUSTER_ID.get(cl[CONF_ID], cl[CONF_ID]),
-            cl[CONF_ROLE],
+            CLUSTER_ROLE[cl[CONF_ROLE]],
             attr[CONF_ATTRIBUTE_ID],
             ATTR_TYPE[attr[CONF_TYPE]],
             attr[CONF_SCALE],
@@ -540,7 +540,7 @@ async def to_code(config):
                 var.add_cluster(
                     ep[CONF_NUM],
                     CLUSTER_ID.get(cl[CONF_ID], cl[CONF_ID]),
-                    cl[CONF_ROLE],
+                    CLUSTER_ROLE[cl[CONF_ROLE]],
                 )
             )
             await attributes_to_code(var, ep[CONF_NUM], cl)

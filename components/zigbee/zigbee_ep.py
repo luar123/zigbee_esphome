@@ -57,7 +57,6 @@ from .const import (
     Switch,
 )
 from .types import ZigBeeAttribute
-from .zigbee_const import CLUSTER_ROLE
 
 # endpoint configs:
 ep_configs = {
@@ -66,7 +65,7 @@ ep_configs = {
         CONF_CLUSTERS: [
             {
                 CONF_ID: "BINARY_INPUT",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x55,
@@ -109,7 +108,7 @@ ep_configs = {
         CONF_CLUSTERS: [
             {
                 CONF_ID: "ANALOG_INPUT",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x55,
@@ -152,7 +151,7 @@ ep_configs = {
         CONF_CLUSTERS: [
             {
                 CONF_ID: "BINARY_OUTPUT",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x55,
@@ -195,7 +194,7 @@ ep_configs = {
         CONF_CLUSTERS: [
             {
                 CONF_ID: "TEMP_MEASUREMENT",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
@@ -215,7 +214,7 @@ ep_configs = {
         CONF_CLUSTERS: [
             {
                 CONF_ID: "ON_OFF",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
@@ -235,7 +234,7 @@ ep_configs = {
         CONF_CLUSTERS: [
             {
                 CONF_ID: "ON_OFF",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
@@ -255,7 +254,7 @@ ep_configs = {
         CONF_CLUSTERS: [
             {
                 CONF_ID: "ON_OFF",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
@@ -270,7 +269,7 @@ ep_configs = {
             },
             {
                 CONF_ID: "LEVEL_CONTROL",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
@@ -285,7 +284,7 @@ ep_configs = {
             },
             {
                 CONF_ID: "COLOR_CONTROL",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x3,
@@ -322,7 +321,7 @@ ep_configs = {
         CONF_CLUSTERS: [
             {
                 CONF_ID: "ON_OFF",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
@@ -337,7 +336,7 @@ ep_configs = {
             },
             {
                 CONF_ID: "LEVEL_CONTROL",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
