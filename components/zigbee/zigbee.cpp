@@ -1,9 +1,9 @@
+#include "zigbee.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_check.h"
 #include "nvs_flash.h"
 #include "zigbee_attribute.h"
-#include "zigbee.h"
 #include "esphome/core/log.h"
 #include "zigbee_helpers.h"
 #ifdef CONFIG_WIFI_COEX
@@ -17,7 +17,7 @@
 namespace esphome {
 namespace zigbee {
 
-ZigBeeComponent *zigbeeC;
+ZigBeeComponent *global_zigbee;
 
 device_params_t coord;
 
@@ -74,13 +74,13 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
       // Device started using the NVRAM contents.
       if (err_status == ESP_OK) {
         ESP_LOGD(TAG, "Device started up in %sfactory-reset mode", esp_zb_bdb_is_factory_new() ? "" : "non ");
-        zigbeeC->started_ = true;
+        global_zigbee->started_ = true;
         if (esp_zb_bdb_is_factory_new()) {
           ESP_LOGD(TAG, "Start network steering");
           esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
         } else {
           ESP_LOGD(TAG, "Device rebooted");
-          zigbeeC->searchBindings();
+          global_zigbee->searchBindings();
         }
       } else {
         ESP_LOGE(TAG, "FIRST_START.  Device started up in %sfactory-reset mode with an error %d (%s)",
@@ -102,8 +102,8 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
                  extended_pan_id[7], extended_pan_id[6], extended_pan_id[5], extended_pan_id[4], extended_pan_id[3],
                  extended_pan_id[2], extended_pan_id[1], extended_pan_id[0], esp_zb_get_pan_id(),
                  esp_zb_get_current_channel());
-        zigbeeC->on_join_callback_.call();
-        zigbeeC->connected_ = true;
+        global_zigbee->on_join_callback_.call();
+        global_zigbee->connected_ = true;
       } else {
         ESP_LOGI(TAG, "Network steering was not successful (status: %s)", esp_err_to_name(err_status));
         if (steering_retry_count < 10) {
@@ -146,7 +146,7 @@ void ZigBeeComponent::bindingTableCb(const esp_zb_zdo_binding_table_info_t *tabl
     if (table_info->total == 0) {
       ESP_LOGD(TAG, "No binding table entries found");
       free(req);
-      zigbeeC->connected_ = true;
+      global_zigbee->connected_ = true;
       return;
     }
 
@@ -185,7 +185,7 @@ void ZigBeeComponent::bindingTableCb(const esp_zb_zdo_binding_table_info_t *tabl
     // Print bound devices
     ESP_LOGD(TAG, "Filling bounded devices finished");
     free(req);
-    zigbeeC->connected_ = true;
+    global_zigbee->connected_ = true;
   }
 }
 
@@ -197,59 +197,89 @@ void ZigBeeComponent::searchBindings() {
   esp_zb_zdo_binding_table_req(mb_req, bindingTableCb, (void *) mb_req);
 }
 
-static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
-  esp_err_t ret = ESP_OK;
+void load_zb_event(ZBEvent *event, esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute,
+                   uint8_t *current_level) {
+  event->load_set_attr_value_event(info, attribute, current_level);
+}
 
+void load_zb_event(ZBEvent *event, const esp_zb_zcl_report_attr_message_t *message) {
+  event->load_report_attr_event(message);
+}
+
+void load_zb_event(ZBEvent *event, esp_zb_zcl_cmd_info_t info, esp_zb_zcl_read_attr_resp_variable_t *variables) {
+  event->load_read_attr_resp_event(info, variables);
+}
+
+template<typename... Args> void enqueue_zb_event(Args... args) {
+  // Allocate an event from the pool
+  ZBEvent *event = global_zigbee->zb_event_pool_.allocate();
+  if (event == nullptr) {
+    // No events available - queue is full or we're out of memory
+    global_zigbee->zb_events_.increment_dropped_count();
+    return;
+  }
+
+  // Load new event data (replaces previous event)
+  load_zb_event(event, args...);
+
+  // Push the event to the queue
+  global_zigbee->zb_events_.push(event);
+  // Push always succeeds because we're the only producer and the pool ensures we never exceed queue size
+  global_zigbee->enable_loop_soon_any_context();
+}
+
+// Explicit template instantiations for the friend function
+template void enqueue_zb_event(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute,
+                               uint8_t *current_level);
+template void enqueue_zb_event(const esp_zb_zcl_report_attr_message_t *message);
+template void enqueue_zb_event(esp_zb_zcl_cmd_info_t info, esp_zb_zcl_read_attr_resp_variable_t *variables);
+
+static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message) {
   ESP_RETURN_ON_FALSE(message, ESP_FAIL, TAG, "Empty message");
   ESP_RETURN_ON_FALSE(message->info.status == ESP_ZB_ZCL_STATUS_SUCCESS, ESP_ERR_INVALID_ARG, TAG,
                       "Received message: error status(%d)", message->info.status);
   ESP_LOGD(TAG, "Received message: endpoint(%d), cluster(0x%x), attribute(0x%x), data size(%d)",
            message->info.dst_endpoint, message->info.cluster, message->attribute.id, message->attribute.data.size);
-  zigbeeC->handle_attribute(message->info, message->attribute);
-  return ret;
+
+  // if the attribute is On/Off and it is set to Off, restore the previous level
+  esp_zb_zcl_attr_t *current_level = nullptr;
+  if (message->info.cluster == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF) {
+    if (message->attribute.id == ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID &&
+        message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_BOOL && !*(bool *) message->attribute.data.value) {
+      ESP_LOGD(TAG, "turned off");
+      current_level =
+          esp_zb_zcl_get_attribute(message->info.dst_endpoint, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+                                   ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID);
+      if (current_level) {
+        ESP_LOGD(TAG, "got level");
+        esp_zb_zcl_set_attribute_val(message->info.dst_endpoint, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+                                     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
+                                     current_level->data_p, false);
+      }
+    }
+  }
+  if (current_level != nullptr) {
+    enqueue_zb_event(message->info, message->attribute, (uint8_t *) current_level->data_p);
+  } else {
+    enqueue_zb_event(message->info, message->attribute, nullptr);
+  }
+  return ESP_OK;
 }
 
 static esp_err_t zb_cmd_attribute_handler(const esp_zb_zcl_cmd_read_attr_resp_message_t *message) {
-  esp_err_t ret = ESP_OK;
-
   ESP_RETURN_ON_FALSE(message, ESP_FAIL, TAG, "Empty message");
   ESP_RETURN_ON_FALSE(message->info.status == ESP_ZB_ZCL_STATUS_SUCCESS, ESP_ERR_INVALID_ARG, TAG,
                       "Received message: error status(%d)", message->info.status);
-  esp_zb_zcl_read_attr_resp_variable_t *variable = message->variables;
-  switch (message->info.cluster) {
-    case ESP_ZB_ZCL_CLUSTER_ID_TIME:
-      ESP_LOGD(TAG, "Recieved time information");
-#ifdef USE_ZIGBEE_TIME
-      if (zigbeeC->zt_ == nullptr) {
-        ESP_LOGD(TAG, "No time component linked to update time!");
-      } else {
-        zigbeeC->zt_->recieve_timesync_response(message->variables);
-      }
-#else
-      ESP_LOGD(TAG, "No zigbee time component included at build time!");
-#endif
-      break;
-    default:
-      ESP_LOGD(TAG, "Attribute data recieved (but not yet handled):");
-      while (variable) {
-        ESP_LOGD(TAG, "Read attribute response: status(%d), cluster(0x%x), attribute(0x%x), type(0x%x), value(%d)",
-                 variable->status, message->info.cluster, variable->attribute.id, variable->attribute.data.type,
-                 variable->attribute.data.value ? *(uint8_t *) variable->attribute.data.value : 0);
-        variable = variable->next;
-      }
-  }
-  return ret;
+  enqueue_zb_event(message->info, message->variables);
+  return ESP_OK;
 }
 
 static esp_err_t zb_report_attribute_handler(const esp_zb_zcl_report_attr_message_t *message) {
-  esp_err_t ret = ESP_OK;
-
   ESP_RETURN_ON_FALSE(message, ESP_FAIL, TAG, "Empty message");
   ESP_RETURN_ON_FALSE(message->status == ESP_ZB_ZCL_STATUS_SUCCESS, ESP_ERR_INVALID_ARG, TAG,
                       "Received message: error status(%d)", message->status);
-  zigbeeC->handle_report_attribute(message->dst_endpoint, message->cluster, message->attribute, message->src_address,
-                                   message->src_endpoint);
-  return ret;
+  enqueue_zb_event(message);
+  return ESP_OK;
 }
 
 static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id, const void *message) {
@@ -274,13 +304,14 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
   return ret;
 }
 
-void ZigBeeComponent::handle_attribute(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute) {
+void ZigBeeComponent::handle_attribute(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute,
+                                       uint8_t *current_level) {
   if (this->attributes_.find({info.dst_endpoint, info.cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, attribute.id}) !=
       this->attributes_.end()) {
     this->attributes_[{info.dst_endpoint, info.cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, attribute.id}]->on_value(
         attribute);
     // if the attribute is On/Off and it is set to Off, restore the previous level
-    if (info.cluster == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF) {
+    if (info.cluster == ESP_ZB_ZCL_CLUSTER_ID_ON_OFF && current_level != nullptr) {
       if (attribute.id == ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID && attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_BOOL &&
           !*(bool *) attribute.data.value) {
         ESP_LOGD(TAG, "turned off");
@@ -288,28 +319,19 @@ void ZigBeeComponent::handle_attribute(esp_zb_device_cb_common_info_t info, esp_
                                     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID}) !=
             this->attributes_.end()) {
           ESP_LOGD(TAG, "found level");
-          esp_zb_zcl_attr_t *current_level =
-              esp_zb_zcl_get_attribute(info.dst_endpoint, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
-                                       ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID);
-          if (current_level) {
-            ESP_LOGD(TAG, "got level");
-            esp_zb_zcl_set_attribute_val(info.dst_endpoint, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
-                                         ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
-                                         current_level->data_p, false);
-            esp_zb_zcl_attribute_t lvl_attr = {
-                .id = ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
-                .data =
-                    {
-                        .type = ESP_ZB_ZCL_ATTR_TYPE_U8,
-                        .size = sizeof(uint8_t),
-                        .value = current_level->data_p,
-                    },
-            };
-            this->attributes_[{info.dst_endpoint, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
-                               ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID}]
-                ->on_value(lvl_attr);
-            ESP_LOGD(TAG, "Light set to restore-level: %d", *(uint8_t *) current_level->data_p);
-          }
+          esp_zb_zcl_attribute_t lvl_attr = {
+              .id = ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
+              .data =
+                  {
+                      .type = ESP_ZB_ZCL_ATTR_TYPE_U8,
+                      .size = sizeof(uint8_t),
+                      .value = current_level,
+                  },
+          };
+          this->attributes_[{info.dst_endpoint, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+                             ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID}]
+              ->on_value(lvl_attr);
+          ESP_LOGD(TAG, "Light set to restore-level: %d", *current_level);
         }
       }
     }
@@ -325,6 +347,32 @@ void ZigBeeComponent::handle_report_attribute(uint8_t dst_endpoint, uint16_t clu
     return;
   }
   attr->second->on_report(attribute, src_address, src_endpoint);
+}
+
+void ZigBeeComponent::handle_read_attribute_response(esp_zb_zcl_cmd_info_t info,
+                                                     esp_zb_zcl_read_attr_resp_variable_t *variables) {
+  switch (info.cluster) {
+    case ESP_ZB_ZCL_CLUSTER_ID_TIME:
+      ESP_LOGD(TAG, "Recieved time information");
+#ifdef USE_ZIGBEE_TIME
+      if (this->zt_ == nullptr) {
+        ESP_LOGD(TAG, "No time component linked to update time!");
+      } else {
+        this->zt_->recieve_timesync_response(variables);
+      }
+#else
+      ESP_LOGD(TAG, "No zigbee time component included at build time!");
+#endif
+      break;
+    default:
+      ESP_LOGD(TAG, "Attribute data recieved (but not yet handled):");
+      while (variables) {
+        ESP_LOGD(TAG, "Read attribute response: status(%d), cluster(0x%x), attribute(0x%x), type(0x%x), value(%d)",
+                 variables->status, info.cluster, variables->attribute.id, variables->attribute.data.type,
+                 variables->attribute.data.value ? *(uint8_t *) variables->attribute.data.value : 0);
+        variables = variables->next;
+      }
+  }
 }
 
 void ZigBeeComponent::create_default_cluster(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id) {
@@ -420,7 +468,7 @@ static void esp_zb_task_(void *pvParameters) {
     vTaskDelete(NULL);
   }
 
-  if ((zigbeeC->device_role_ == ESP_ZB_DEVICE_TYPE_ED) && (zigbeeC->basic_cluster_data_.power == 0x03)) {
+  if ((global_zigbee->device_role_ == ESP_ZB_DEVICE_TYPE_ED) && (global_zigbee->basic_cluster_data_.power == 0x03)) {
     ESP_LOGD(TAG, "Battery powered!");
     // zb_set_ed_node_descriptor(0, 1, 1);  // workaround, rx_on_when_idle should be 0 for battery powered devices.
     esp_zb_set_node_descriptor_power_source(0);
@@ -431,7 +479,7 @@ static void esp_zb_task_(void *pvParameters) {
 }
 
 void ZigBeeComponent::setup() {
-  zigbeeC = this;
+  global_zigbee = this;
   esp_zb_platform_config_t config = {
       .radio_config = ESP_ZB_DEFAULT_RADIO_CONFIG(),
       .host_config = ESP_ZB_DEFAULT_HOST_CONFIG(),
@@ -515,6 +563,42 @@ void ZigBeeComponent::setup() {
     }
   }
   xTaskCreate(esp_zb_task_, "Zigbee_main", 4096, NULL, 24, NULL);
+}
+
+void ZigBeeComponent::loop() {
+  // Process all pending events
+  ZBEvent *event = this->zb_events_.pop();
+  while (event != nullptr) {
+    // Handle the event
+    switch (event->callback_id_) {
+      case ESP_ZB_CORE_SET_ATTR_VALUE_CB_ID:
+        this->handle_attribute(
+            event->event_.set_attr.info, event->event_.set_attr.attribute,
+            event->event_.set_attr.has_current_level ? &event->event_.set_attr.current_level : nullptr);
+        break;
+      case ESP_ZB_CORE_CMD_READ_ATTR_RESP_CB_ID:
+        this->handle_read_attribute_response(event->event_.read_attr_resp.info,
+                                             &(event->event_.read_attr_resp.variables));
+        break;
+      case ESP_ZB_CORE_REPORT_ATTR_CB_ID:
+        this->handle_report_attribute(event->event_.report_attr.dst_endpoint, event->event_.report_attr.cluster,
+                                      event->event_.report_attr.attribute, event->event_.report_attr.src_address,
+                                      event->event_.report_attr.src_endpoint);
+
+        break;
+    }
+
+    // Free the event back to the pool
+    this->zb_event_pool_.release(event);
+    // Get the next event
+    event = this->zb_events_.pop();
+  }
+  // Log dropped events periodically
+  uint16_t dropped = this->zb_events_.get_and_reset_dropped_count();
+  if (dropped > 0) {
+    ESP_LOGW(TAG, "Dropped %u Zigbee events due to buffer overflow", dropped);
+  }
+  this->disable_loop();
 }
 
 void ZigBeeComponent::dump_config() {

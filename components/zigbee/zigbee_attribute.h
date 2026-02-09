@@ -2,11 +2,11 @@
 
 #include <type_traits>
 
+#include "zigbee.h"
 #include "esp_zigbee_core.h"
 #include "esphome/core/automation.h"
 #include "esphome/core/component.h"
 #include "esphome/core/defines.h"
-#include "zigbee.h"
 #ifdef USE_SENSOR
 #include "esphome/components/sensor/sensor.h"
 #endif

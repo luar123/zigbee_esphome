@@ -26,7 +26,7 @@ binary_sensor_ns = cg.esphome_ns.namespace("binary_sensor")
 BinarySensor = binary_sensor_ns.class_("BinarySensor", cg.EntityBase)
 sensor_ns = cg.esphome_ns.namespace("sensor")
 Sensor = sensor_ns.class_("Sensor", cg.EntityBase)
-switch_ns = cg.esphome_ns.namespace("switch_") # NB: "switch_" not "switch"
+switch_ns = cg.esphome_ns.namespace("switch_")  # NB: "switch_" not "switch"
 Switch = switch_ns.class_("Switch", cg.EntityBase)
 
 

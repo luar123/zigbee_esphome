@@ -3,13 +3,18 @@
 #include <map>
 #include <tuple>
 
+#include "esphome/core/defines.h"
+#include "esphome/core/automation.h"
+#include "esphome/core/component.h"
+#include "esphome/core/log.h"
+#include "esphome/core/lock_free_queue.h"
+#include "esphome/core/event_pool.h"
+
+#include "esp_zb_event.h"
+
 #include "esp_zigbee_core.h"
 #include "zboss_api.h"
 #include "ha/esp_zigbee_ha_standard.h"
-#include "esphome/core/automation.h"
-#include "esphome/core/component.h"
-#include "esphome/core/defines.h"
-#include "esphome/core/log.h"
 #include "zigbee_helpers.h"
 
 #ifdef USE_ZIGBEE_TIME
@@ -20,6 +25,7 @@ namespace esphome {
 namespace zigbee {
 
 static const char *const TAG = "zigbee";
+static constexpr uint8_t MAX_ZB_QUEUE_SIZE = 32;
 
 using device_params_t = struct DeviceParamsS {
   esp_zb_ieee_addr_t ieee_addr;
@@ -61,6 +67,7 @@ class ZigbeeTime;
 class ZigBeeComponent : public Component {
  public:
   void setup() override;
+  void loop() override;
   void dump_config() override;
   esp_err_t create_endpoint(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id,
                             esp_zb_cluster_list_t *esp_zb_cluster_list);
@@ -78,9 +85,10 @@ class ZigBeeComponent : public Component {
   void add_attr(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id, uint8_t attr_type,
                 uint8_t attr_access, uint8_t max_size, T value);
 
-  void handle_attribute(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute);
+  void handle_attribute(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute, uint8_t *current_level);
   void handle_report_attribute(uint8_t dst_endpoint, uint16_t cluster, esp_zb_zcl_attribute_t attribute,
                                esp_zb_zcl_addr_t src_address, uint8_t src_endpoint);
+  void handle_read_attribute_response(esp_zb_zcl_cmd_info_t info, esp_zb_zcl_read_attr_resp_variable_t *variables);
   void searchBindings();
   static void bindingTableCb(const esp_zb_zdo_binding_table_info_t *table_info, void *user_ctx);
 
@@ -121,6 +129,9 @@ class ZigBeeComponent : public Component {
 #endif
 
  protected:
+  template<typename... Args> friend void enqueue_zb_event(Args... args);
+  esphome::LockFreeQueue<ZBEvent, MAX_ZB_QUEUE_SIZE> zb_events_;
+  esphome::EventPool<ZBEvent, MAX_ZB_QUEUE_SIZE> zb_event_pool_;
   esp_zb_attribute_list_t *create_basic_cluster_();
   template<typename T>
   void add_attr_(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,

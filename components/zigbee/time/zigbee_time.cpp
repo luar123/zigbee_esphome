@@ -26,7 +26,7 @@ void ZigbeeTime::send_timesync_request() {
 void ZigbeeTime::recieve_timesync_response(esp_zb_zcl_read_attr_resp_variable_t *variable) {
   uint32_t utc = 0;
   uint8_t sync_status = 0;
-  while (variable) {
+  while (variable != nullptr) {
     ESP_LOGD(TAG, "Read attribute response: status(%d), attribute(0x%x), type(0x%x), value(%d)", variable->status,
              variable->attribute.id, variable->attribute.data.type,
              variable->attribute.data.value ? *(uint32_t *) variable->attribute.data.value : 0);
