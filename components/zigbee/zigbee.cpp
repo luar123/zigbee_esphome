@@ -247,14 +247,17 @@ static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t 
     if (message->attribute.id == ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID &&
         message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_BOOL && !*(bool *) message->attribute.data.value) {
       ESP_LOGD(TAG, "turned off");
-      current_level =
-          esp_zb_zcl_get_attribute(message->info.dst_endpoint, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
-                                   ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID);
-      if (current_level) {
-        ESP_LOGD(TAG, "got level");
-        esp_zb_zcl_set_attribute_val(message->info.dst_endpoint, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
-                                     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
-                                     current_level->data_p, false);
+      if (esp_zb_zcl_get_cluster(message->info.dst_endpoint, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+                                 ESP_ZB_ZCL_CLUSTER_SERVER_ROLE) != nullptr) {
+        current_level =
+            esp_zb_zcl_get_attribute(message->info.dst_endpoint, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+                                     ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID);
+        if (current_level) {
+          ESP_LOGD(TAG, "got level");
+          esp_zb_zcl_set_attribute_val(message->info.dst_endpoint, ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL,
+                                       ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID,
+                                       current_level->data_p, false);
+        }
       }
     }
   }
