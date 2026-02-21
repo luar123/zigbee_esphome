@@ -562,6 +562,17 @@ void ZigBeeComponent::setup() {
     return;
   }
 
+  // https://github.com/espressif/esp-zigbee-sdk/issues/457#issuecomment-2426128314
+  uint16_t on_off_on_time = 0;
+  bool on_off_global_scene_control = 0;
+  esp_zb_cluster_list_t *cluster_list = esp_zb_ep_list_get_ep(esp_zb_color_dimmable_light_ep, HA_COLOR_DIMMABLE_LIGHT_ENDPOINT);
+  esp_zb_attribute_list_t *onoff_attr_list =
+      esp_zb_cluster_list_get_cluster(cluster_list, ESP_ZB_ZCL_CLUSTER_ID_ON_OFF, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+  esp_zb_on_off_cluster_add_attr(onoff_attr_list, ESP_ZB_ZCL_ATTR_ON_OFF_ON_TIME, &on_off_on_time);
+  esp_zb_on_off_cluster_add_attr(onoff_attr_list, ESP_ZB_ZCL_ATTR_ON_OFF_GLOBAL_SCENE_CONTROL,
+          &on_off_global_scene_control);
+  // .
+
   esp_zb_core_action_handler_register(zb_action_handler);
 
   if (esp_zb_set_primary_network_channel_set(ESP_ZB_PRIMARY_CHANNEL_MASK) != ESP_OK) {
