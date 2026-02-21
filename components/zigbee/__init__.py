@@ -65,7 +65,8 @@ from .const import (
     CONF_ROLE,
     CONF_ROUTER,
     CONF_SCALE,
-    BinarySensor,
+    CONF_TRUST_CENTER_KEY,
+    CONF_DEVICE_VERSION,
     Sensor,
     Switch,
 )
@@ -258,6 +259,8 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_VERSION, default=0): cv.int_,
             cv.Optional(CONF_AREA, default=0): cv.int_,  # make enum
             cv.Optional(CONF_ROUTER, default=False): cv.boolean,
+            cv.Optional(CONF_TRUST_CENTER_KEY): cv.bind_key,
+            cv.Optional(CONF_DEVICE_VERSION, default=0): cv.int_,
             cv.Optional(CONF_DEBUG, default=False): cv.boolean,
             cv.Optional(CONF_COMPONENTS): cv.Any(
                 cv.one_of("all", "none", lower=True),
@@ -531,6 +534,10 @@ async def to_code(config):
             config[CONF_AREA],
         )
     )
+    if CONF_TRUST_CENTER_KEY in config:
+        cg.add_define("CONF_TRUST_CENTER_KEY", config[CONF_TRUST_CENTER_KEY])
+    if CONF_DEVICE_VERSION in config:
+        cg.add_define("CONF_DEVICE_VERSION", config[CONF_DEVICE_VERSION])
     for ep in ep_list:
         cg.add(
             var.create_default_cluster(ep[CONF_NUM], DEVICE_ID[ep[CONF_DEVICE_TYPE]])
