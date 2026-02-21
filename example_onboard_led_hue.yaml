@@ -1,0 +1,38 @@
+esphome:
+  name: hue_light1
+  friendly_name: hue_light1
+  min_version: 2026.2.0
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/mbchristoff/zigbee_esphome
+      ref: 76b2065ae8349818c6b68ec3f01abceb3eed2db8
+    components: [zigbee]
+
+esp32:
+  variant: ESP32H2  # Either put ESP32C6 or ESP32H2 depending on the board that you have
+  partitions: partitions_zb.csv
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+
+zigbee:
+  id: "zb"
+  trust_center_key: "814286865DC1C8B2C8CBC52E5D65D1B8"
+  device_version: 1
+  components: all 
+  on_join:
+    then:
+      - logger.log: "Joined network"
+
+light:
+  - platform: esp32_rmt_led_strip
+    rgb_order: GRB
+    pin: 8
+    num_leds: 1
+    id: light_1
+    name: "led"
+    chipset: ws2812
