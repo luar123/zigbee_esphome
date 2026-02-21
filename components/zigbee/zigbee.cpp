@@ -21,6 +21,10 @@ ZigBeeComponent *global_zigbee;
 
 device_params_t coord;
 
+/* On/Off optional attributes (must persist!) */
+static uint16_t zb_on_off_on_time = 0;
+static bool zb_on_off_global_scene_control = true;
+
 /**
  * Creates a ZCL string from the given input string.
  *
@@ -577,6 +581,33 @@ void ZigBeeComponent::setup() {
     }
   }
   this->attribute_list_.clear();
+
+  /* -------------------------------------------------------------------------- */
+  /* Fix missing optional On/Off attributes                                     */
+  /* -------------------------------------------------------------------------- */
+  
+  for (auto const &[ep_id, dev] : this->endpoint_list_) {
+  
+    esp_zb_cluster_list_t *cluster_list = std::get<1>(dev);
+  
+    esp_zb_attribute_list_t *on_off_cluster =
+        esp_zb_cluster_list_get_cluster(cluster_list,
+                                        ESP_ZB_ZCL_CLUSTER_ID_ON_OFF,
+                                        ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+  
+    if (on_off_cluster != nullptr) {
+  
+      ESP_LOGD(TAG, "Patching On/Off cluster for endpoint %d", ep_id);
+  
+      esp_zb_on_off_cluster_add_attr(on_off_cluster,
+                                     ESP_ZB_ZCL_ATTR_ON_OFF_ON_TIME,
+                                     &zb_on_off_on_time);
+  
+      esp_zb_on_off_cluster_add_attr(on_off_cluster,
+                                     ESP_ZB_ZCL_ATTR_ON_OFF_GLOBAL_SCENE_CONTROL,
+                                     &zb_on_off_global_scene_control);
+    }
+  }
 
   // endpoints
   for (auto const &[ep_id, dev] : this->endpoint_list_) {
