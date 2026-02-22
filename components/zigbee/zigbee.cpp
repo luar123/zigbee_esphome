@@ -551,9 +551,7 @@ void ZigBeeComponent::setup() {
   }
   this->attribute_list_.clear();
 
-  /* -------------------------------------------------------------------------- */
-  /* Fix missing optional On/Off attributes                                     */
-  /* -------------------------------------------------------------------------- */
+  // Fix On/Off needed for Philips hue compatibility - some attributes are required by the Hue bridge that aren't in the default cluster, so add them here
   
   for (auto const &[ep_id, dev] : this->endpoint_list_) {
   

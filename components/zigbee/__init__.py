@@ -65,6 +65,7 @@ from .const import (
     CONF_ROLE,
     CONF_ROUTER,
     CONF_SCALE,
+    BinarySensor,
     CONF_TRUST_CENTER_KEY,
     CONF_DEVICE_VERSION,
     Sensor,
