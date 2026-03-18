@@ -122,7 +122,7 @@ async def setup_switch(switch, config):
     pass
 
 
-async def setup_number(number, config):
+async def setup_number(number, config, min_value, max_value, step):
     pass
 
 
