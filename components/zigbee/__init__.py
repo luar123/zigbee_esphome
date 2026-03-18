@@ -106,6 +106,10 @@ def validate_switch(x):
     return x
 
 
+def validate_number(x):
+    return x
+
+
 async def setup_binary_sensor(sensor, config):
     pass
 
