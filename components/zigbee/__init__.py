@@ -91,6 +91,7 @@ comp_ids = 0
 BINARY_SENSOR_SCHEMA = cv.Schema({})
 SENSOR_SCHEMA = cv.Schema({})
 SWITCH_SCHEMA = cv.Schema({})
+NUMBER_SCHEMA = cv.Schema({})
 
 
 def validate_binary_sensor(x):
