@@ -122,6 +122,10 @@ async def setup_switch(switch, config):
     pass
 
 
+async def setup_number(number, config):
+    pass
+
+
 def get_c_size(bits, options):
     return str([n for n in options if n >= int(bits)][0])
 
