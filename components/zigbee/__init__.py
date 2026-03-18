@@ -91,6 +91,7 @@ comp_ids = 0
 BINARY_SENSOR_SCHEMA = cv.Schema({})
 SENSOR_SCHEMA = cv.Schema({})
 SWITCH_SCHEMA = cv.Schema({})
+NUMBER_SCHEMA = cv.Schema({})
 
 
 def validate_binary_sensor(x):
@@ -105,6 +106,10 @@ def validate_switch(x):
     return x
 
 
+def validate_number(x):
+    return x
+
+
 async def setup_binary_sensor(sensor, config):
     pass
 
@@ -114,6 +119,10 @@ async def setup_sensor(sensor, config):
 
 
 async def setup_switch(switch, config):
+    pass
+
+
+async def setup_number(number, config, min_value, max_value, step):
     pass
 
 
