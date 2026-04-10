@@ -103,7 +103,9 @@ class ZigBeeComponent : public Component {
   ZigbeeTime *zt_{nullptr};
 #endif
 
-  void add_on_join_callback(std::function<void()> &&callback) { this->on_join_callback_.add(std::move(callback)); }
+  template<typename F> void add_on_join_callback(F &&callback) {
+    this->on_join_callback_.add(std::forward<F>(callback));
+  }
 
   bool is_started() { return this->started_; }
   bool is_connected() { return this->connected_; }

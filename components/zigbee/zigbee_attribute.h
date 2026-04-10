@@ -52,9 +52,7 @@ class ZigBeeAttribute : public Component {
 
   uint8_t attr_type() { return attr_type_; }
 
-  void add_on_value_callback(std::function<void(esp_zb_zcl_attribute_t attribute)> callback) {
-    on_value_callback_.add(std::move(callback));
-  }
+  template<typename F> void add_on_value_callback(F &&callback) { on_value_callback_.add(std::forward<F>(callback)); }
   void on_value(esp_zb_zcl_attribute_t attribute) { this->on_value_callback_.call(attribute); }
 
   void add_on_report_callback(

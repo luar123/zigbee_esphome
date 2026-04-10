@@ -1,4 +1,5 @@
 import datetime
+import inspect
 from pathlib import Path
 import re
 
@@ -12,15 +13,6 @@ from esphome.components.esp32 import (
     add_idf_sdkconfig_option,
     only_on_variant,
 )
-
-try:
-    from esphome.components.esp32 import require_vfs_select
-except ImportError:
-
-    def require_vfs_select():
-        pass
-
-
 from esphome.components.esp32.const import (
     VARIANT_ESP32C5,
     VARIANT_ESP32C6,
@@ -82,6 +74,27 @@ from .types import (
 )
 from .zigbee_const import ATTR_ACCESS, ATTR_TYPE, CLUSTER_ID, CLUSTER_ROLE, DEVICE_ID
 from .zigbee_ep import create_ep
+
+try:
+    from esphome.components.esp32 import require_vfs_select
+except ImportError:
+
+    def require_vfs_select():
+        pass
+
+
+_supports_synchronous = (
+    "synchronous" in inspect.signature(automation.register_action).parameters
+)
+
+
+def _register_action(name, action_type, schema, **kwargs):
+    if _supports_synchronous:
+        kwargs.setdefault("synchronous", True)
+    else:
+        kwargs.pop("synchronous", None)
+    return automation.register_action(name, action_type, schema, **kwargs)
+
 
 DEPENDENCIES = ["esp32"]
 
@@ -566,8 +579,11 @@ ZIGBEE_ACTION_SCHEMA = cv.Schema(
 )
 
 
-@automation.register_action(
-    "zigbee.reset", ResetZigbeeAction, automation.maybe_simple_id(ZIGBEE_ACTION_SCHEMA)
+@_register_action(
+    "zigbee.reset",
+    ResetZigbeeAction,
+    automation.maybe_simple_id(ZIGBEE_ACTION_SCHEMA),
+    synchronous=True,
 )
 async def reset_zigbee_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg)
@@ -575,8 +591,11 @@ async def reset_zigbee_to_code(config, action_id, template_arg, args):
     return var
 
 
-@automation.register_action(
-    "zigbee.report", ReportAction, automation.maybe_simple_id(ZIGBEE_ACTION_SCHEMA)
+@_register_action(
+    "zigbee.report",
+    ReportAction,
+    automation.maybe_simple_id(ZIGBEE_ACTION_SCHEMA),
+    synchronous=True,
 )
 async def report_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg)
@@ -603,7 +622,9 @@ ZIGBEE_SET_ATTR_SCHEMA = cv.All(
 )
 
 
-@automation.register_action("zigbee.setAttr", SetAttrAction, ZIGBEE_SET_ATTR_SCHEMA)
+@_register_action(
+    "zigbee.setAttr", SetAttrAction, ZIGBEE_SET_ATTR_SCHEMA, synchronous=True
+)
 async def zigbee_set_attr_to_code(config, action_id, template_arg, args):
     attr = find_attr(
         CORE.config["zigbee"],
@@ -623,10 +644,11 @@ async def zigbee_set_attr_to_code(config, action_id, template_arg, args):
     return var
 
 
-@automation.register_action(
+@_register_action(
     "zigbee.reportAttr",
     ReportAttrAction,
     automation.maybe_simple_id(ZIGBEE_ATTRIBUTE_ACTION_SCHEMA),
+    synchronous=True,
 )
 async def zigbee_report_attr_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg)
