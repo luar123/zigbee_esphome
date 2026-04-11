@@ -86,6 +86,8 @@ zigbee:
 - **version** (Optional, int): Zigbee App Version in basic cluster. Defaults to `0`
 - **area** (Optional, int): Zigbee Physical Environment in basic cluster. See ZCL. Defaults to `0` = unknown
 - **router** (Optional, bool): Create a router device instead of an end device. Defaults to `false`
+- **device_version** (Optional, int): Set the Home Automation Profile device version. Custom values might be needed for compatibility with some vendors. Defaults to `0`
+- **trust_center_key** (Optional, bind_key): Set custom trust center key. 32 digits hex number.
 - **debug** (Optional, bool): Print zigbee stack debug messages. Defaults to `false`
 - **components** (Optional, string|list): `all`: add definitions for all supported components that have a name and are not marked as internal.
   - None: Add no definitions (default).
