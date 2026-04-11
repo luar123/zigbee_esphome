@@ -4,7 +4,6 @@ import esphome.codegen as cg
 zigbee_ns = cg.esphome_ns.namespace("zigbee")
 ZigBeeComponent = zigbee_ns.class_("ZigBeeComponent", cg.Component)
 ZigBeeAttribute = zigbee_ns.class_("ZigBeeAttribute", cg.Component)
-ZigBeeJoinTrigger = zigbee_ns.class_("ZigBeeJoinTrigger", automation.Trigger)
 ZigBeeOnValueTrigger = zigbee_ns.class_(
     "ZigBeeOnValueTrigger", automation.Trigger.template(int), cg.Component
 )

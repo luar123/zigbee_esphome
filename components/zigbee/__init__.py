@@ -68,7 +68,6 @@ from .types import (
     SetAttrAction,
     ZigBeeAttribute,
     ZigBeeComponent,
-    ZigBeeJoinTrigger,
     ZigBeeOnReportTrigger,
     ZigBeeOnValueTrigger,
 )
@@ -97,6 +96,10 @@ def _register_action(name, action_type, schema, **kwargs):
 
 
 DEPENDENCIES = ["esp32"]
+
+_CALLBACK_AUTOMATIONS = (
+    automation.CallbackAutomation(CONF_ON_JOIN, "add_on_join_callback"),
+)
 
 comp_ids = 0
 
@@ -366,11 +369,7 @@ CONFIG_SCHEMA = cv.All(
                     }
                 ),
             ),
-            cv.Optional(CONF_ON_JOIN): automation.validate_automation(
-                {
-                    cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ZigBeeJoinTrigger),
-                }
-            ),
+            cv.Optional(CONF_ON_JOIN): automation.validate_automation({}),
         }
     ).extend(cv.COMPONENT_SCHEMA),
     cv.require_framework_version(esp_idf=cv.Version(5, 1, 2)),
@@ -566,10 +565,7 @@ async def to_code(config):
                 )
             )
             await attributes_to_code(var, ep[CONF_NUM], cl)
-
-    for conf in config.get(CONF_ON_JOIN, []):
-        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
-        await automation.build_automation(trigger, [], conf)
+    await automation.build_callback_automations(var, config, _CALLBACK_AUTOMATIONS)
 
 
 ZIGBEE_ACTION_SCHEMA = cv.Schema(

@@ -16,13 +16,6 @@
 namespace esphome {
 namespace zigbee {
 
-class ZigBeeJoinTrigger : public Trigger<> {
- public:
-  explicit ZigBeeJoinTrigger(ZigBeeComponent *parent) {
-    parent->add_on_join_callback([this]() { this->trigger(); });
-  }
-};
-
 template<typename... Ts> class ResetZigbeeAction : public Action<Ts...>, public Parented<ZigBeeComponent> {
  public:
 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
