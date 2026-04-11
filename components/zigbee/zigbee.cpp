@@ -462,7 +462,7 @@ esp_err_t ZigBeeComponent::create_endpoint(uint8_t endpoint_id, esp_zb_ha_standa
   esp_zb_endpoint_config_t endpoint_config = {.endpoint = endpoint_id,
                                               .app_profile_id = ESP_ZB_AF_HA_PROFILE_ID,
                                               .app_device_id = device_id,
-                                              .app_device_version = 0};
+                                              .app_device_version = this->device_version_};
   return esp_zb_ep_list_add_ep(this->esp_zb_ep_list_, esp_zb_cluster_list, endpoint_config);
 }
 
@@ -519,6 +519,11 @@ void ZigBeeComponent::setup() {
   zb_nwk_cfg.nwk_cfg.zed_cfg = zb_zed_cfg;
 #endif
   esp_zb_init(&zb_nwk_cfg);
+
+  if (this->custom_trust_center_key_) {
+    esp_zb_enable_joining_to_distributed(true);
+    esp_zb_secur_TC_standard_distributed_key_set(this->trustkey_);
+  }
 
   esp_err_t ret;
 
@@ -615,10 +620,21 @@ void ZigBeeComponent::loop() {
 }
 
 void ZigBeeComponent::dump_config() {
+  char trustkey_hex[format_hex_pretty_size(sizeof(this->trustkey_))];
   ESP_LOGCONFIG(TAG, "ZigBee:");
-  for (auto const &[key, val] : this->endpoint_list_) {
-    ESP_LOGCONFIG(TAG, "Endpoint: %u, %d", key, std::get<0>(val));
+  ESP_LOGCONFIG(TAG, "  Device Version: %u", this->device_version_);
+  if (this->custom_trust_center_key_) {
+    ESP_LOGCONFIG(TAG, "  Custom Trust Center Key: %s",
+                  format_hex_pretty_to(trustkey_hex, this->trustkey_, sizeof(this->trustkey_), '.'));
   }
+  for (auto const &[key, val] : this->endpoint_list_) {
+    ESP_LOGCONFIG(TAG, "  Endpoint: %u, %d", key, std::get<0>(val));
+  }
+}
+
+void ZigBeeComponent::set_trust_center_key(const char *trust_center_key) {
+  parse_hex(trust_center_key, this->trustkey_, sizeof(this->trustkey_));
+  this->custom_trust_center_key_ = true;
 }
 
 }  // namespace zigbee

@@ -48,6 +48,7 @@ from .const import (
     CONF_ATTRIBUTES,
     CONF_CLUSTERS,
     CONF_DEVICE_TYPE,
+    CONF_DEVICE_VERSION,
     CONF_ENDPOINTS,
     CONF_MANUFACTURER,
     CONF_NUM,
@@ -57,6 +58,7 @@ from .const import (
     CONF_ROLE,
     CONF_ROUTER,
     CONF_SCALE,
+    CONF_TRUST_CENTER_KEY,
     BinarySensor,
     Sensor,
     Switch,
@@ -283,6 +285,8 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_VERSION, default=0): cv.int_,
             cv.Optional(CONF_AREA, default=0): cv.int_,  # make enum
             cv.Optional(CONF_ROUTER, default=False): cv.boolean,
+            cv.Optional(CONF_TRUST_CENTER_KEY): cv.bind_key,
+            cv.Optional(CONF_DEVICE_VERSION): cv.int_,
             cv.Optional(CONF_DEBUG, default=False): cv.boolean,
             cv.Optional(CONF_COMPONENTS): cv.Any(
                 cv.one_of("all", "none", lower=True),
@@ -537,6 +541,12 @@ async def to_code(config):
     # setup zigbee components
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
+
+    if CONF_TRUST_CENTER_KEY in config:
+        cg.add(var.set_trust_center_key(config[CONF_TRUST_CENTER_KEY]))
+    if CONF_DEVICE_VERSION in config:
+        cg.add(var.set_device_version(config[CONF_DEVICE_VERSION]))
+
     if CONF_NAME not in config:
         config[CONF_NAME] = CORE.name or ""
     cg.add(

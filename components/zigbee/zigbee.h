@@ -74,6 +74,8 @@ class ZigBeeComponent : public Component {
   void set_basic_cluster(std::string model, std::string manufacturer, std::string date, uint8_t power,
                          uint8_t app_version, uint8_t stack_version, uint8_t hw_version, std::string area,
                          uint8_t physical_env);
+  void set_trust_center_key(const char *trust_center_key);
+  void set_device_version(uint8_t version) { this->device_version_ = version; }
   void add_cluster(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role);
   void create_default_cluster(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id);
 
@@ -144,6 +146,9 @@ class ZigBeeComponent : public Component {
   std::map<std::tuple<uint8_t, uint16_t, uint8_t, uint16_t>, ZigBeeAttribute *> attributes_;
   esp_zb_ep_list_t *esp_zb_ep_list_ = esp_zb_ep_list_create();
   uint8_t ident_time_;
+  bool custom_trust_center_key_ = false;
+  uint8_t trustkey_[16] = {0};
+  uint8_t device_version_ = 0;
 };
 
 extern "C" void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct);
