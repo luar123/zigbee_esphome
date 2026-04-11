@@ -12,6 +12,45 @@
 
 External ZigBee component for ESPHome.
 
+## Features
+
+- Automated generation of zigbee definition for lights, switches, sensors and binary sensors (see basic mode)
+- Definition of endpoints, clusters and attributes supported by esp-zigbee-sdk 1.6
+- Set attributes action
+- Manual report action
+- Reset zigbee action
+- Join trigger
+- Attribute received trigger
+- Time sync with coordinator
+- Custom clusters and attributes
+- (normal, binary, text) sensors, switches and lights can be connected to attributes without need for lambdas/actions
+- Wifi co-existence on ESP32-C6 and ESP32-C5
+- Deep-sleep should work
+- Not tested: groups
+- Time sync with coordinator
+- Router
+
+## Limitations
+
+- No coordinator devices
+- Attribute set action works only with numeric types and character string
+- Attribute OnValue trigger works only with numeric types
+- Reporting can be enabled, but not configured
+- No control devices like switches ([workaround](https://github.com/luar123/zigbee_esphome/discussions/18#discussioncomment-11875376))
+- Needs esp-idf >=5.1.4
+- Needs esphome >=2025.7
+- scenes not implemented
+- Officially the zigbee stack supports only 10 endpoints. however, this is not enforced and at least for sensor endpoints more than 10 seem to work. More then 10 light endpoints will crash!
+- zigbee2mqtt: Only one light is supported without creating a custom converter/definition
+- zigbee2mqtt: Analog input cluster (used for sensors) is supported by 2025 October release, but ignores type and unit
+- ZHA: Analog input cluster (used for sensors) without unit/type is ignored
+- ZHA: Minimum reporting interval is set to high values (30s) for some sensors and can't be changed. Keep that in mind if reporting seems not to work properly.
+
+## ToDo List (Short-Mid term)
+
+- Light effects (through identify cluster commands)
+- more components to support basic mode
+
 ## Not planed (feel free to submit a pull request)
 
 - [Zigbee ZCL OTA Upgrade Cluster](https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32/user-guide/zcl_ota_upgrade.html) and related [OTA API for ESP Zigbee SDK](https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32/api-reference/esp_zigbee_ota.html) to allow OTA (over-the-air) firmware updates via Zigbee
@@ -19,7 +58,6 @@ External ZigBee component for ESPHome.
 - Binding config in yaml
 - Reporting config in yaml
 - Control device support like switches ([workaround](https://github.com/luar123/zigbee_esphome/discussions/18#discussioncomment-11875376))
-
 
 ## Usage
 
