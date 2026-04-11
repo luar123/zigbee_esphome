@@ -51,7 +51,7 @@ External ZigBee component for ESPHome.
 - Light effects (through identify cluster commands)
 - more components to support basic mode
 
-## Not planed (feel free to submit a pull request)
+## Not planned (feel free to submit a pull request)
 
 - [Zigbee ZCL OTA Upgrade Cluster](https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32/user-guide/zcl_ota_upgrade.html) and related [OTA API for ESP Zigbee SDK](https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32/api-reference/esp_zigbee_ota.html) to allow OTA (over-the-air) firmware updates via Zigbee
 - Coordinator devices
