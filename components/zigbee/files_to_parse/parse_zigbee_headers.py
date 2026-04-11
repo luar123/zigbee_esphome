@@ -87,6 +87,8 @@ with open("zigbee_const.py", "w", encoding="utf-8") as f:
 replacements_cl = {
     "level_control": "level",
     "multi_value": "multistate_value",
+    "multi_input": "multistate_input",
+    "multi_output": "multistate_output",
     "ota_upgrade": "ota",
     "illuminance_measurement": "illuminance_meas",
     "temp_measurement": "temperature_meas",
@@ -97,14 +99,7 @@ replacements_cl = {
 }
 
 remove_cl = [
-    "device_temp_config",
-    "alarms",
     "rssi_location",
-    "binary_output",
-    "binary_value",
-    "multi_input",
-    "multi_output",
-    "poll_control",
     "green_power",
     "keep_alive",
     "pump_config_control",
@@ -138,6 +133,8 @@ def write_cluster_list_aou(enums):
 replacements_attrl = {
     "level_control": "level",
     "multi_value": "multistate_value",
+    "multi_input": "multistate_input",
+    "multi_output": "multistate_output",
     "ota_upgrade": "ota",
     "illuminance_measurement": "illuminance_meas",
     "temp_measurement": "temperature_meas",
@@ -171,14 +168,7 @@ def write_attr_list_create(enums):
 
 
 remove_attra = [
-    "device_temp_config",
-    "alarms",
     "rssi_location",
-    "binary_output",
-    "binary_value",
-    "multi_input",
-    "multi_output",
-    "poll_control",
     "green_power",
     "keep_alive",
     "pump_config_control",

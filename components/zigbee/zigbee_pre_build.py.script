@@ -1,0 +1,20 @@
+from os import path
+import re
+
+def_file = "./src/esphome/core/defines.h"
+
+if path.exists(def_file):
+    # open file and replace number of components in ESPHOME_COMPONENT_COUNT with number from ZB_ESPHOME_COMPONENT_COUNT
+    with open(def_file, "rt", encoding="utf-8") as f:
+        content = f.read()
+    match = re.search(r"#define ZB_ESPHOME_COMPONENT_COUNT (\d+)", content)
+    if match:
+        zb_count = match.group(1)
+        content = re.sub(r"#define ESPHOME_COMPONENT_COUNT \d+", f"#define ESPHOME_COMPONENT_COUNT {zb_count}", content)
+        print(f"updated ESPHOME_COMPONENT_COUNT: {zb_count}")
+        # remove ZB_ESPHOME_COMPONENT_COUNT line
+        content = re.sub(r"#define ZB_ESPHOME_COMPONENT_COUNT \d+\n", "", content)
+    else:
+        print("ZB_ESPHOME_COMPONENT_COUNT not found")
+    with open(def_file, "w", encoding="utf-8") as f:
+        f.write(content)

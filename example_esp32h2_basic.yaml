@@ -1,0 +1,58 @@
+esphome:
+  name: zb-example-h2
+
+external_components:
+  - source: components
+    components: [zigbee]
+
+esp32:
+  board: esp32-h2-devkitm-1
+  partitions: partitions_zb.csv
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+  hardware_uart: UART0
+
+sensor:
+  - platform: internal_temperature
+    name: "Internal Temperature"
+    id: "temp"
+    filters:
+      - delta: 0.1
+
+zigbee:
+  id: "zb"
+  components: all
+  on_join:
+    then:
+      - logger.log: "Joined network"
+
+light:
+  - platform: esp32_rmt_led_strip
+    rgb_order: GRB
+    pin: 8
+    num_leds: 1
+    id: light_1
+    name: "my_light"
+    chipset: ws2812
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: 9
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    id: button_1
+    name: "button1"
+    #on_press:
+    #  then:
+    #    - zigbee.report: zb
+    on_click:
+      min_length: 5s
+      max_length: 20s
+      then:
+        - zigbee.reset: zb

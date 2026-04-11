@@ -19,13 +19,14 @@ void ZigbeeTime::send_timesync_request() {
     esp_zb_zcl_read_attr_cmd_req(&read_req);
     esp_zb_lock_release();
     this->requested_ = true;
+    ESP_LOGD(TAG, "Sent request");
   }
 }
 
 void ZigbeeTime::recieve_timesync_response(esp_zb_zcl_read_attr_resp_variable_t *variable) {
   uint32_t utc = 0;
   uint8_t sync_status = 0;
-  while (variable) {
+  while (variable != nullptr) {
     ESP_LOGD(TAG, "Read attribute response: status(%d), attribute(0x%x), type(0x%x), value(%d)", variable->status,
              variable->attribute.id, variable->attribute.data.type,
              variable->attribute.data.value ? *(uint32_t *) variable->attribute.data.value : 0);
@@ -69,7 +70,7 @@ void ZigbeeTime::loop() {
     return;
   if (this->requested_)
     return;
-  if (zc_->connected) {
+  if (zc_->is_connected()) {
     this->send_timesync_request();
   }
 }

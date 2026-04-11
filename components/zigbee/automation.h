@@ -2,29 +2,45 @@
 
 //#include <stdfloat> //deactive because not working with esp-idf 5.1.4
 
-#include "esphome/core/component.h"
 #include "esphome/core/automation.h"
+#include "esphome/core/component.h"
+#include "esphome/core/defines.h"
+#include "esphome/core/version.h"
+#include "esphome/core/log.h"
 #include "zigbee_attribute.h"
 #include "zigbee.h"
+#ifdef USE_LIGHT
+#include "esphome/components/light/light_state.h"
+#endif
 
 namespace esphome {
 namespace zigbee {
 
-class ZigBeeJoinTrigger : public Trigger<> {
- public:
-  explicit ZigBeeJoinTrigger(ZigBeeComponent *parent) {
-    parent->add_on_join_callback([this]() { this->trigger(); });
-  }
-};
-
 template<typename... Ts> class ResetZigbeeAction : public Action<Ts...>, public Parented<ZigBeeComponent> {
  public:
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
+  void play(const Ts &...x) override { this->parent_->reset(); }
+#else
   void play(Ts... x) override { this->parent_->reset(); }
+#endif
 };
 
 template<typename... Ts> class ReportAction : public Action<Ts...>, public Parented<ZigBeeComponent> {
  public:
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
+  void play(const Ts &...x) override { this->parent_->report(); }
+#else
   void play(Ts... x) override { this->parent_->report(); }
+#endif
+};
+
+template<typename... Ts> class ReportAttrAction : public Action<Ts...>, public Parented<ZigBeeAttribute> {
+ public:
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
+  void play(const Ts &...x) override { this->parent_->report(); }
+#else
+  void play(Ts... x) override { this->parent_->report(); }
+#endif
 };
 
 template<typename T, typename... Ts> class SetAttrAction : public Action<Ts...> {
@@ -32,11 +48,11 @@ template<typename T, typename... Ts> class SetAttrAction : public Action<Ts...> 
   SetAttrAction(ZigBeeAttribute *parent) : parent_(parent) {}
   TEMPLATABLE_VALUE(T, value);
 
-  void play(Ts... x) override {
-    T *value = new T;
-    *value = this->value_.value(x...);
-    this->parent_->set_attr(value);
-  }
+#if ESPHOME_VERSION_CODE >= VERSION_CODE(2025, 11, 0)
+  void play(const Ts &...x) override { this->parent_->set_attr(this->value_.value(x...)); }
+#else
+  void play(Ts... x) override { this->parent_->set_attr(this->value_.value(x...)); }
+#endif
 
  protected:
   ZigBeeAttribute *parent_;
@@ -53,6 +69,35 @@ template<typename Ts> class ZigBeeOnValueTrigger : public Trigger<Ts>, public Co
   void on_value_(esp_zb_zcl_attribute_t attribute) {
     if (attribute.data.type == parent_->attr_type() && attribute.data.value) {
       this->trigger(get_value_by_type<Ts>(parent_->attr_type(), attribute.data.value));
+    }
+  }
+  ZigBeeAttribute *parent_;
+};
+
+template<typename T> struct ZigBeeReportData {
+  T value;
+  esp_zb_zcl_addr_t src_address;
+  uint8_t src_endpoint;
+};
+
+template<typename T> class ZigBeeOnReportTrigger : public Trigger<ZigBeeReportData<T>>, public Component {
+ public:
+  explicit ZigBeeOnReportTrigger(ZigBeeAttribute *parent) : parent_(parent) {}
+  void setup() override {
+    this->parent_->add_on_report_callback(
+        [this](esp_zb_zcl_attribute_t attribute, esp_zb_zcl_addr_t src_address, uint8_t src_endpoint) {
+          this->on_report_(attribute, src_address, src_endpoint);
+        });
+  }
+
+ protected:
+  void on_report_(esp_zb_zcl_attribute_t attribute, esp_zb_zcl_addr_t src_address, uint8_t src_endpoint) {
+    if (attribute.data.type == parent_->attr_type() && attribute.data.value) {
+      this->trigger(ZigBeeReportData<T>{
+          .value = get_value_by_type<T>(parent_->attr_type(), attribute.data.value),
+          .src_address = src_address,
+          .src_endpoint = src_endpoint,
+      });
     }
   }
   ZigBeeAttribute *parent_;
@@ -106,6 +151,10 @@ template<class T> T get_value_by_type(uint8_t attr_type, void *data) {
 float get_r_from_xy(float x, float y);
 float get_g_from_xy(float x, float y);
 float get_b_from_xy(float x, float y);
+
+#ifdef USE_LIGHT
+void set_light_color(uint8_t ep, light::LightCall *call, uint16_t value, bool is_x);
+#endif
 
 }  // namespace zigbee
 }  // namespace esphome

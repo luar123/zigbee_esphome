@@ -1,24 +1,34 @@
 import datetime
+import inspect
+from pathlib import Path
 import re
 
 from esphome import automation
 import esphome.codegen as cg
+from esphome.components import text_sensor
 from esphome.components.esp32 import (
     CONF_PARTITIONS,
-    # add_extra_build_file,
+    add_extra_script,
     add_idf_component,
     add_idf_sdkconfig_option,
     only_on_variant,
 )
-from esphome.components.esp32.const import VARIANT_ESP32C6, VARIANT_ESP32H2
+from esphome.components.esp32.const import (
+    VARIANT_ESP32C5,
+    VARIANT_ESP32C6,
+    VARIANT_ESP32H2,
+)
 import esphome.config_validation as cv
 from esphome.const import (
     CONF_AP,
     CONF_AREA,
+    CONF_COMPONENTS,
     CONF_DATE,
+    CONF_DEBUG,
     CONF_DEVICE,
     CONF_ID,
     CONF_LAMBDA,
+    CONF_MAX_LENGTH,
     CONF_NAME,
     CONF_ON_VALUE,
     CONF_POWER_SUPPLY,
@@ -31,43 +41,107 @@ from esphome.const import (
 from esphome.core import CORE, EsphomeError
 import esphome.final_validate as fv
 
+from .const import (
+    CONF_ACCESS,
+    CONF_AS_GENERIC,
+    CONF_ATTRIBUTE_ID,
+    CONF_ATTRIBUTES,
+    CONF_CLUSTERS,
+    CONF_DEVICE_TYPE,
+    CONF_DEVICE_VERSION,
+    CONF_ENDPOINTS,
+    CONF_MANUFACTURER,
+    CONF_NUM,
+    CONF_ON_JOIN,
+    CONF_ON_REPORT,
+    CONF_REPORT,
+    CONF_ROLE,
+    CONF_ROUTER,
+    CONF_SCALE,
+    CONF_TRUST_CENTER_KEY,
+    BinarySensor,
+    Sensor,
+    Switch,
+)
+from .types import (
+    ReportAction,
+    ReportAttrAction,
+    ResetZigbeeAction,
+    SetAttrAction,
+    ZigBeeAttribute,
+    ZigBeeComponent,
+    ZigBeeOnReportTrigger,
+    ZigBeeOnValueTrigger,
+)
 from .zigbee_const import ATTR_ACCESS, ATTR_TYPE, CLUSTER_ID, CLUSTER_ROLE, DEVICE_ID
+from .zigbee_ep import create_ep
+
+try:
+    from esphome.components.esp32 import require_vfs_select
+except ImportError:
+
+    def require_vfs_select():
+        pass
+
+
+_supports_synchronous = (
+    "synchronous" in inspect.signature(automation.register_action).parameters
+)
+
+
+def _register_action(name, action_type, schema, **kwargs):
+    if _supports_synchronous:
+        kwargs.setdefault("synchronous", True)
+    else:
+        kwargs.pop("synchronous", None)
+    return automation.register_action(name, action_type, schema, **kwargs)
+
 
 DEPENDENCIES = ["esp32"]
 
-CONF_ENDPOINTS = "endpoints"
-CONF_DEVICE_TYPE = "device_type"
-CONF_NUM = "num"
-CONF_CLUSTERS = "clusters"
-CONF_ON_JOIN = "on_join"
-CONF_IDENT_TIME = "ident_time"
-CONF_MANUFACTURER = "manufacturer"
-CONF_ATTRIBUTES = "attributes"
-CONF_ROLE = "role"
-CONF_ENDPOINT = "endpoint"
-CONF_CLUSTER = "cluster"
-CONF_REPORT = "report"
-CONF_ACCESS = "access"
-CONF_SCALE = "scale"
-CONF_ATTRIBUTE_ID = "attribute_id"
-CONF_ZIGBEE_ID = "zigbee_id"
-CONF_TRUST_CENTER_KEY = "trust_center_key"
-CONF_DEVICE_VERSION = "device_version"
+_CALLBACK_AUTOMATIONS = (
+    automation.CallbackAutomation(CONF_ON_JOIN, "add_on_join_callback"),
+)
 
-zigbee_ns = cg.esphome_ns.namespace("zigbee")
-ZigBeeComponent = zigbee_ns.class_("ZigBeeComponent", cg.Component)
-ZigBeeAttribute = zigbee_ns.class_("ZigBeeAttribute", cg.Component)
-ZigBeeJoinTrigger = zigbee_ns.class_("ZigBeeJoinTrigger", automation.Trigger)
-ZigBeeOnValueTrigger = zigbee_ns.class_(
-    "ZigBeeOnValueTrigger", automation.Trigger.template(int), cg.Component
-)
-ResetZigbeeAction = zigbee_ns.class_(
-    "ResetZigbeeAction", automation.Action, cg.Parented.template(ZigBeeComponent)
-)
-SetAttrAction = zigbee_ns.class_("SetAttrAction", automation.Action)
-ReportAction = zigbee_ns.class_(
-    "ReportAction", automation.Action, cg.Parented.template(ZigBeeComponent)
-)
+comp_ids = 0
+
+# dummies for upstream compatibility
+BINARY_SENSOR_SCHEMA = cv.Schema({})
+SENSOR_SCHEMA = cv.Schema({})
+SWITCH_SCHEMA = cv.Schema({})
+NUMBER_SCHEMA = cv.Schema({})
+
+
+def validate_binary_sensor(x):
+    return x
+
+
+def validate_sensor(x):
+    return x
+
+
+def validate_switch(x):
+    return x
+
+
+def validate_number(x):
+    return x
+
+
+async def setup_binary_sensor(sensor, config):
+    pass
+
+
+async def setup_sensor(sensor, config):
+    pass
+
+
+async def setup_switch(switch, config):
+    pass
+
+
+async def setup_number(number, config, min_value, max_value, step):
+    pass
 
 
 def get_c_size(bits, options):
@@ -109,6 +183,8 @@ def get_cv_by_type(attr_type):
 
 
 def get_default_by_type(attr_type):
+    if "CHAR_STRING" == attr_type:
+        return ""
     return 0
 
 
@@ -122,6 +198,22 @@ def validate_clusters(config):
     return config
 
 
+def validate_string_attributes(config):
+    if "CHAR_STRING" == config[CONF_TYPE]:
+        if CONF_MAX_LENGTH not in config.keys():
+            raise cv.Invalid(
+                f"The '{CONF_MAX_LENGTH}' parameter is mandatory for string attributes."
+            )
+        if config[CONF_MAX_LENGTH] == 0:
+            config[CONF_MAX_LENGTH] = len(config.get(CONF_VALUE, ""))
+        # Check that size of default value matches CONF_MAX_LENGTH
+        if len(config[CONF_VALUE]) > config[CONF_MAX_LENGTH]:
+            raise cv.Invalid(
+                "The default value is larger than the maximum length of the string attribute."
+            )
+    return config
+
+
 def validate_attributes(config):
     if CONF_VALUE in config:
         config[CONF_VALUE] = get_cv_by_type(config[CONF_TYPE])(config[CONF_VALUE])
@@ -132,6 +224,17 @@ def validate_attributes(config):
         if CONF_ACCESS in config
         else 0
     )
+    validate_string_attributes(config)
+    if (CONF_ID not in config) and (
+        CONF_DEVICE in config or CONF_ON_VALUE in config or CONF_ON_REPORT in config
+    ):
+        config[CONF_ID] = cv.declare_id(ZigBeeAttribute)(None)
+    elif all(
+        i not in config for i in [CONF_ID, CONF_DEVICE, CONF_ON_VALUE, CONF_ON_REPORT]
+    ) and (config[CONF_SCALE] != 1.0 or CONF_LAMBDA in config or config[CONF_REPORT]):
+        raise cv.Invalid(
+            f"Parameters {CONF_SCALE}', '{CONF_LAMBDA}' or '{CONF_REPORT}' are not allowed without '{CONF_ID}', '{CONF_DEVICE}', '{CONF_ON_VALUE}' or '{CONF_ON_REPORT}'."
+        )
 
     return config
 
@@ -154,11 +257,19 @@ def final_validate(config):
     if CONF_WIFI in fv.full_config.get():
         if CONF_AP in fv.full_config.get()[CONF_WIFI]:
             raise cv.Invalid("Zigbee can't be used together with an Wifi Access Point.")
-
+    global comp_ids  # noqa: PLW0603
+    comp_ids = len(CORE.component_ids)
     return config
 
 
 FINAL_VALIDATE_SCHEMA = cv.Schema(final_validate)
+
+
+def _require_vfs_select(config):
+    """Register VFS select requirement during config validation."""
+    # ZigBee uses esp_vfs_eventfd which requires VFS select support
+    require_vfs_select()
+    return config
 
 
 CONFIG_SCHEMA = cv.All(
@@ -170,18 +281,24 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(
                 CONF_DATE, default=datetime.datetime.now().strftime("%Y%m%d")
             ): cv.string,
-            cv.Optional(CONF_IDENT_TIME): cv.string,
             cv.Optional(CONF_POWER_SUPPLY, default=0): cv.int_,  # make enum
             cv.Optional(CONF_VERSION, default=0): cv.int_,
             cv.Optional(CONF_AREA, default=0): cv.int_,  # make enum
+            cv.Optional(CONF_ROUTER, default=False): cv.boolean,
             cv.Optional(CONF_TRUST_CENTER_KEY): cv.bind_key,
-            cv.Optional(CONF_DEVICE_VERSION, default=0): cv.int_,
-            cv.Required(CONF_ENDPOINTS): cv.ensure_list(
+            cv.Optional(CONF_DEVICE_VERSION): cv.int_,
+            cv.Optional(CONF_DEBUG, default=False): cv.boolean,
+            cv.Optional(CONF_COMPONENTS): cv.Any(
+                cv.one_of("all", "none", lower=True),
+                cv.ensure_list(cv.use_id(cg.EntityBase)),
+            ),
+            cv.Optional(CONF_AS_GENERIC, default=False): cv.boolean,
+            cv.Optional(CONF_ENDPOINTS): cv.ensure_list(
                 cv.Schema(
                     {
                         cv.Required(CONF_DEVICE_TYPE): cv.enum(DEVICE_ID, upper=True),
                         cv.Optional(CONF_NUM): cv.int_range(1, 240),
-                        cv.Optional(CONF_CLUSTERS, default={}): cv.ensure_list(
+                        cv.Optional(CONF_CLUSTERS): cv.ensure_list(
                             cv.Schema(
                                 {
                                     cv.Required(CONF_ID): cv.Any(
@@ -194,7 +311,7 @@ CONFIG_SCHEMA = cv.All(
                                     cv.Optional(CONF_ATTRIBUTES): cv.ensure_list(
                                         cv.Schema(
                                             {
-                                                cv.GenerateID(): cv.declare_id(
+                                                cv.Optional(CONF_ID): cv.declare_id(
                                                     ZigBeeAttribute
                                                 ),
                                                 cv.Required(CONF_ATTRIBUTE_ID): cv.int_,
@@ -207,7 +324,10 @@ CONFIG_SCHEMA = cv.All(
                                                 cv.Optional(CONF_VALUE): cv.valid,
                                                 cv.Optional(
                                                     CONF_REPORT, default=False
-                                                ): cv.boolean,
+                                                ): cv.Any(
+                                                    cv.boolean,
+                                                    cv.one_of("force", lower=True),
+                                                ),
                                                 cv.Optional(
                                                     CONF_ON_VALUE
                                                 ): automation.validate_automation(
@@ -228,6 +348,20 @@ CONFIG_SCHEMA = cv.All(
                                                 cv.Optional(
                                                     CONF_LAMBDA
                                                 ): cv.returning_lambda,
+                                                cv.Optional(
+                                                    CONF_MAX_LENGTH
+                                                ): cv.int_range(0, 254),
+                                                cv.Optional(
+                                                    CONF_ON_REPORT
+                                                ): automation.validate_automation(
+                                                    {
+                                                        cv.GenerateID(
+                                                            CONF_TRIGGER_ID
+                                                        ): cv.declare_id(
+                                                            ZigBeeOnReportTrigger
+                                                        ),
+                                                    }
+                                                ),
                                             }
                                         ),
                                         validate_attributes,
@@ -239,18 +373,16 @@ CONFIG_SCHEMA = cv.All(
                     }
                 ),
             ),
-            cv.Optional(CONF_ON_JOIN): automation.validate_automation(
-                {
-                    cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ZigBeeJoinTrigger),
-                }
-            ),
+            cv.Optional(CONF_ON_JOIN): automation.validate_automation({}),
         }
     ).extend(cv.COMPONENT_SCHEMA),
     cv.require_framework_version(esp_idf=cv.Version(5, 1, 2)),
+    _require_vfs_select,
     only_on_variant(
         supported=[
             VARIANT_ESP32H2,
             VARIANT_ESP32C6,
+            VARIANT_ESP32C5,
         ]
     ),
 )
@@ -258,39 +390,163 @@ CONFIG_SCHEMA = cv.All(
 
 def find_attr(conf, id):
     for ep in conf[CONF_ENDPOINTS]:
-        for cl in ep[CONF_CLUSTERS]:
-            for attr in cl[CONF_ATTRIBUTES]:
+        for cl in ep.get(CONF_CLUSTERS, []):
+            for attr in cl.get(CONF_ATTRIBUTES, []):
                 if attr[CONF_ID] == id:
                     return attr
     raise EsphomeError(f"Zigbee: Cannot find attribute {id}.")
 
 
+async def attributes_to_code(var, ep_num, cl):
+    for attr in cl.get(CONF_ATTRIBUTES, []):
+        if attr.get(CONF_ID) is None:
+            cg.add(
+                var.add_attr(
+                    ep_num,
+                    CLUSTER_ID.get(cl[CONF_ID], cl[CONF_ID]),
+                    CLUSTER_ROLE[cl[CONF_ROLE]],
+                    attr[CONF_ATTRIBUTE_ID],
+                    ATTR_TYPE[attr[CONF_TYPE]],
+                    attr[CONF_ACCESS],
+                    attr.get(CONF_MAX_LENGTH, 0),
+                    attr[CONF_VALUE],
+                )
+            )
+            continue
+        attr_var = cg.new_Pvariable(
+            attr[CONF_ID],
+            var,
+            ep_num,
+            CLUSTER_ID.get(cl[CONF_ID], cl[CONF_ID]),
+            CLUSTER_ROLE[cl[CONF_ROLE]],
+            attr[CONF_ATTRIBUTE_ID],
+            ATTR_TYPE[attr[CONF_TYPE]],
+            attr[CONF_SCALE],
+        )
+        await cg.register_component(attr_var, attr)
+
+        cg.add(
+            attr_var.add_attr(
+                attr[CONF_ACCESS],
+                attr.get(CONF_MAX_LENGTH, 0),
+                attr[CONF_VALUE],
+            )
+        )
+        if attr[CONF_REPORT]:
+            cg.add(attr_var.set_report(attr[CONF_REPORT] == "force"))
+
+        if CONF_LAMBDA in attr:
+            lambda_ = await cg.process_lambda(
+                attr[CONF_LAMBDA],
+                [(cg.float_, "x")],
+                return_type=get_c_type(attr[CONF_TYPE]),
+            )
+
+        if CONF_DEVICE in attr:
+            device = await cg.get_variable(attr[CONF_DEVICE])
+            template_arg = cg.TemplateArguments(get_c_type(attr[CONF_TYPE]))
+            if CONF_LAMBDA in attr:
+                if device.base.type.inherits_from(Sensor):
+                    lambda_ = await cg.process_lambda(
+                        attr[CONF_LAMBDA],
+                        [(cg.float_, "x")],
+                        return_type=get_c_type(attr[CONF_TYPE]),
+                    )
+                elif device.base.type.inherits_from(BinarySensor):
+                    lambda_ = await cg.process_lambda(
+                        attr[CONF_LAMBDA],
+                        [(cg.bool_, "x")],
+                        return_type=get_c_type(attr[CONF_TYPE]),
+                    )
+                elif device.base.type.inherits_from(text_sensor.TextSensor):
+                    lambda_ = await cg.process_lambda(
+                        attr[CONF_LAMBDA],
+                        [(cg.std_string, "x")],
+                        return_type=get_c_type(attr[CONF_TYPE]),
+                    )
+                elif device.base.type.inherits_from(Switch):
+                    lambda_ = await cg.process_lambda(
+                        attr[CONF_LAMBDA],
+                        [(get_c_type(attr[CONF_TYPE]), "x")],
+                        return_type=cg.bool_,
+                    )
+                cg.add(attr_var.connect(template_arg, device, lambda_))
+            else:
+                cg.add(attr_var.connect(template_arg, device))
+
+        for conf in attr.get(CONF_ON_VALUE, []):
+            trigger = cg.new_Pvariable(
+                conf[CONF_TRIGGER_ID],
+                cg.TemplateArguments(get_c_type(attr[CONF_TYPE])),
+                attr_var,
+            )
+            await cg.register_component(trigger, conf)
+            await automation.build_automation(
+                trigger, [(get_c_type(attr[CONF_TYPE]), "x")], conf
+            )
+
+        for conf in attr.get(CONF_ON_REPORT, []):
+            trigger = cg.new_Pvariable(
+                conf[CONF_TRIGGER_ID],
+                cg.TemplateArguments(get_c_type(attr[CONF_TYPE])),
+                attr_var,
+            )
+            await cg.register_component(trigger, conf)
+            value_type = get_c_type(attr[CONF_TYPE])
+            automation_arg_type = "esphome::zigbee::ZigBeeReportData" + str(
+                cg.TemplateArguments(value_type)
+            )
+            await automation.build_automation(
+                trigger, [(cg.RawExpression(automation_arg_type), "x")], conf
+            )
+
+
 async def to_code(config):
-    # use component manager:
-    # add_extra_build_file(
-    #    "src/idf_component.yml",
-    #    os.path.join(os.path.dirname(__file__), "idf_component.yml"),
-    # )
-    # use add_idf_component: v1.5.1
     add_idf_component(
-        name="espressif__esp-zboss-lib",
-        repo="https://github.com/espressif/esp-zboss-lib.git",
-        ref="354f742fab22cdb12b4ae61a103a7b438c7c975f",
+        name="espressif/esp-zboss-lib",
+        ref="1.6.4",
     )
     add_idf_component(
-        name="esp-zigbee-lib",
-        repo="https://github.com/espressif/esp-zigbee-sdk.git",
-        path="components/esp-zigbee-lib",
-        ref="df56883084e89ebabf8a4985f92a023bd816a1b5",
+        name="espressif/esp-zigbee-lib",
+        ref="1.6.8",
     )
+
     add_idf_sdkconfig_option("CONFIG_ZB_ENABLED", True)
-    add_idf_sdkconfig_option("CONFIG_ZB_ZED", True)
+    if config.get(CONF_ROUTER):
+        add_idf_sdkconfig_option("CONFIG_ZB_ZCZR", True)
+    else:
+        add_idf_sdkconfig_option("CONFIG_ZB_ZED", True)
     add_idf_sdkconfig_option("CONFIG_ZB_RADIO_NATIVE", True)
+    # The pre-built Zigbee library uses esp_log_default_level which requires
+    # dynamic log level control to be enabled
+    add_idf_sdkconfig_option("CONFIG_LOG_DYNAMIC_LEVEL_CONTROL", True)
+
     if CONF_WIFI in CORE.config:
         add_idf_sdkconfig_option("CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE", 4096)
         cg.add_define("CONFIG_WIFI_COEX")
+    if config.get(CONF_DEBUG):
+        add_idf_sdkconfig_option("CONFIG_ZB_DEBUG_MODE", True)
+
+    # create endpoints
+    ep_list, added_ids = create_ep(config, CORE.config)
+    if added_ids:
+        # update ESPHOME_COMPONENT_COUNT via pre build script
+        cg.add_define("ZB_ESPHOME_COMPONENT_COUNT", comp_ids + added_ids)
+        add_extra_script(
+            "pre",
+            "zigbee_pre_build.py",
+            Path(__file__).parent / "zigbee_pre_build.py.script",
+        )
+
+    # setup zigbee components
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
+
+    if CONF_TRUST_CENTER_KEY in config:
+        cg.add(var.set_trust_center_key(config[CONF_TRUST_CENTER_KEY]))
+    if CONF_DEVICE_VERSION in config:
+        cg.add(var.set_device_version(config[CONF_DEVICE_VERSION]))
+
     if CONF_NAME not in config:
         config[CONF_NAME] = CORE.name or ""
     cg.add(
@@ -306,90 +562,20 @@ async def to_code(config):
             config[CONF_AREA],
         )
     )
-    if CONF_IDENT_TIME in config:
-        cg.add(var.set_ident_time(config[CONF_IDENT_TIME]))
-    if CONF_TRUST_CENTER_KEY in config:
-        cg.add_define("CONF_TRUST_CENTER_KEY", config[CONF_TRUST_CENTER_KEY])
-    if CONF_DEVICE_VERSION in config:
-        cg.add_define("CONF_DEVICE_VERSION", config[CONF_DEVICE_VERSION])
-    for ep in config[CONF_ENDPOINTS]:
+    for ep in ep_list:
         cg.add(
             var.create_default_cluster(ep[CONF_NUM], DEVICE_ID[ep[CONF_DEVICE_TYPE]])
         )
-        cg.add(
-            var.add_cluster(ep[CONF_NUM], CLUSTER_ID["BASIC"], CLUSTER_ROLE["SERVER"])
-        )
-        if CONF_IDENT_TIME in config:
+        for cl in ep.get(CONF_CLUSTERS, []):
             cg.add(
                 var.add_cluster(
                     ep[CONF_NUM],
-                    CLUSTER_ID["IDENTIFY"],
-                    CLUSTER_ROLE["SERVER"],
+                    CLUSTER_ID.get(cl[CONF_ID], cl[CONF_ID]),
+                    CLUSTER_ROLE[cl[CONF_ROLE]],
                 )
             )
-        for cl in ep[CONF_CLUSTERS]:
-            cg.add(
-                var.add_cluster(
-                    ep[CONF_NUM],
-                    cl[CONF_ID],
-                    cl[CONF_ROLE],
-                )
-            )
-            for attr in cl[CONF_ATTRIBUTES]:
-                attr_var = cg.new_Pvariable(
-                    attr[CONF_ID],
-                    var,
-                    ep[CONF_NUM],
-                    cl[CONF_ID],
-                    cl[CONF_ROLE],
-                    attr[CONF_ATTRIBUTE_ID],
-                    attr[CONF_TYPE],
-                    attr[CONF_SCALE],
-                )
-                await cg.register_component(attr_var, attr)
-
-                cg.add(
-                    attr_var.add_attr(
-                        attr[CONF_ACCESS],
-                        attr[CONF_VALUE],
-                    )
-                )
-                if attr[CONF_REPORT]:
-                    cg.add(attr_var.set_report())
-
-                if CONF_LAMBDA in attr:
-                    lambda_ = await cg.process_lambda(
-                        attr[CONF_LAMBDA],
-                        [(cg.float_, "x")],
-                        return_type=get_c_type(attr[CONF_TYPE]),
-                    )
-
-                if CONF_DEVICE in attr:
-                    device = await cg.get_variable(attr[CONF_DEVICE])
-                    template_arg = cg.TemplateArguments(get_c_type(attr[CONF_TYPE]))
-                    if CONF_LAMBDA in attr:
-                        lambda_ = await cg.process_lambda(
-                            attr[CONF_LAMBDA],
-                            [(cg.float_, "x")],
-                            return_type=get_c_type(attr[CONF_TYPE]),
-                        )
-                        cg.add(attr_var.connect(template_arg, device, lambda_))
-                    else:
-                        cg.add(attr_var.connect(template_arg, device))
-
-                for conf in attr.get(CONF_ON_VALUE, []):
-                    trigger = cg.new_Pvariable(
-                        conf[CONF_TRIGGER_ID],
-                        cg.TemplateArguments(get_c_type(attr[CONF_TYPE])),
-                        attr_var,
-                    )
-                    await cg.register_component(trigger, conf)
-                    await automation.build_automation(
-                        trigger, [(get_c_type(attr[CONF_TYPE]), "x")], conf
-                    )
-    for conf in config.get(CONF_ON_JOIN, []):
-        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
-        await automation.build_automation(trigger, [], conf)
+            await attributes_to_code(var, ep[CONF_NUM], cl)
+    await automation.build_callback_automations(var, config, _CALLBACK_AUTOMATIONS)
 
 
 ZIGBEE_ACTION_SCHEMA = cv.Schema(
@@ -399,8 +585,11 @@ ZIGBEE_ACTION_SCHEMA = cv.Schema(
 )
 
 
-@automation.register_action(
-    "zigbee.reset", ResetZigbeeAction, automation.maybe_simple_id(ZIGBEE_ACTION_SCHEMA)
+@_register_action(
+    "zigbee.reset",
+    ResetZigbeeAction,
+    automation.maybe_simple_id(ZIGBEE_ACTION_SCHEMA),
+    synchronous=True,
 )
 async def reset_zigbee_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg)
@@ -408,8 +597,11 @@ async def reset_zigbee_to_code(config, action_id, template_arg, args):
     return var
 
 
-@automation.register_action(
-    "zigbee.report", ReportAction, automation.maybe_simple_id(ZIGBEE_ACTION_SCHEMA)
+@_register_action(
+    "zigbee.report",
+    ReportAction,
+    automation.maybe_simple_id(ZIGBEE_ACTION_SCHEMA),
+    synchronous=True,
 )
 async def report_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg)
@@ -436,13 +628,18 @@ ZIGBEE_SET_ATTR_SCHEMA = cv.All(
 )
 
 
-@automation.register_action("zigbee.setAttr", SetAttrAction, ZIGBEE_SET_ATTR_SCHEMA)
+@_register_action(
+    "zigbee.setAttr", SetAttrAction, ZIGBEE_SET_ATTR_SCHEMA, synchronous=True
+)
 async def zigbee_set_attr_to_code(config, action_id, template_arg, args):
     attr = find_attr(
         CORE.config["zigbee"],
         config[CONF_ID],
     )
-    template_arg = cg.TemplateArguments(get_c_type(attr[CONF_TYPE]), template_arg.args)
+    template_arg = cg.TemplateArguments(
+        get_c_type(attr[CONF_TYPE]),
+        template_arg.args if template_arg.args.args else None,
+    )
     parent = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, parent)
     template_ = await cg.templatable(
@@ -450,4 +647,16 @@ async def zigbee_set_attr_to_code(config, action_id, template_arg, args):
     )
     cg.add(var.set_value(template_))
 
+    return var
+
+
+@_register_action(
+    "zigbee.reportAttr",
+    ReportAttrAction,
+    automation.maybe_simple_id(ZIGBEE_ATTRIBUTE_ACTION_SCHEMA),
+    synchronous=True,
+)
+async def zigbee_report_attr_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
     return var
