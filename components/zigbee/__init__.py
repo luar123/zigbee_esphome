@@ -1,5 +1,6 @@
 import datetime
 import inspect
+import logging
 from pathlib import Path
 import re
 
@@ -83,6 +84,16 @@ except ImportError:
     def require_vfs_select():
         pass
 
+
+try:
+    from esphome.components.esp32 import add_partition
+except ImportError:
+
+    def add_partition(*args, **kwargs):
+        pass
+
+
+_LOGGER = logging.getLogger(__name__)
 
 _supports_synchronous = (
     "synchronous" in inspect.signature(automation.register_action).parameters
@@ -250,13 +261,20 @@ def final_validate(config):
                 raise cv.Invalid(
                     "Add \n'zb_storage, data, fat,   , 16K,'\n'zb_fct, data, fat, , 1K,'\n to your custom partition table."
                 )
-    else:
-        raise cv.Invalid(
-            f"Use '{CONF_PARTITIONS}' in esp32 to specify a custom partition table including zigbee partitions"
-        )
     if CONF_WIFI in fv.full_config.get():
+        if config[CONF_ROUTER] and CONF_AP in fv.full_config.get()[CONF_WIFI]:
+            raise cv.Invalid(
+                "Only Zigbee End Device can be used together with a Wifi Access Point."
+            )
         if CONF_AP in fv.full_config.get()[CONF_WIFI]:
-            raise cv.Invalid("Zigbee can't be used together with an Wifi Access Point.")
+            _LOGGER.warning(
+                "Wifi Access Point might be unstable while Zigbee is active, use only as fallback."
+            )
+        elif config[CONF_ROUTER]:
+            _LOGGER.warning(
+                "The Zigbee Router might miss packets while Wifi is active and could destabilize "
+                "your network. Use only if Wifi is off most of the time."
+            )
     global comp_ids  # noqa: PLW0603
     comp_ids = len(CORE.component_ids)
     return config
@@ -520,6 +538,10 @@ async def to_code(config):
     # The pre-built Zigbee library uses esp_log_default_level which requires
     # dynamic log level control to be enabled
     add_idf_sdkconfig_option("CONFIG_LOG_DYNAMIC_LEVEL_CONTROL", True)
+
+    # add partitions for zigbee
+    add_partition("zb_storage", "data", "fat", 0x4000)  # 16KB
+    add_partition("zb_fct", "data", "fat", 0x1000)  # 4KB, minimum size
 
     if CONF_WIFI in CORE.config:
         add_idf_sdkconfig_option("CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE", 4096)
