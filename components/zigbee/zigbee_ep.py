@@ -7,15 +7,18 @@ from esphome.const import (
     CONF_DEVICE,
     CONF_DEVICE_CLASS,
     CONF_ID,
+    CONF_LAMBDA,
     CONF_MAX_LENGTH,
     CONF_TYPE,
     CONF_UNIT_OF_MEASUREMENT,
     CONF_VALUE,
+    DEVICE_CLASS_ATMOSPHERIC_PRESSURE,
     DEVICE_CLASS_CURRENT,
     DEVICE_CLASS_DURATION,
     DEVICE_CLASS_ENERGY,
     DEVICE_CLASS_FREQUENCY,
     DEVICE_CLASS_HUMIDITY,
+    DEVICE_CLASS_ILLUMINANCE,
     DEVICE_CLASS_POWER,
     DEVICE_CLASS_PRESSURE,
     DEVICE_CLASS_TEMPERATURE,
@@ -36,7 +39,7 @@ from esphome.const import (
     UNIT_VOLT,
     UNIT_WATT,
 )
-from esphome.core import CORE, ID
+from esphome.core import CORE, ID, Lambda
 
 from .const import (
     CONF_ACCESS,
@@ -189,7 +192,7 @@ ep_configs = {
             },
         ],
     },
-    "temperature": {
+    DEVICE_CLASS_TEMPERATURE: {
         CONF_DEVICE_TYPE: "TEMPERATURE_SENSOR",
         CONF_CLUSTERS: [
             {
@@ -203,6 +206,67 @@ ep_configs = {
                         CONF_TYPE: "S16",
                         CONF_REPORT: True,
                         CONF_SCALE: 100,
+                        CONF_DEVICE: None,
+                    },
+                ],
+            },
+        ],
+    },
+    DEVICE_CLASS_HUMIDITY: {
+        CONF_DEVICE_TYPE: "CUSTOM_ATTR",
+        CONF_CLUSTERS: [
+            {
+                CONF_ID: "REL_HUMIDITY_MEASUREMENT",
+                CONF_ROLE: "SERVER",
+                CONF_ATTRIBUTES: [
+                    {
+                        CONF_ATTRIBUTE_ID: 0x0,
+                        CONF_VALUE: 0,
+                        CONF_ACCESS: 0,
+                        CONF_TYPE: "U16",
+                        CONF_REPORT: True,
+                        CONF_SCALE: 100,
+                        CONF_DEVICE: None,
+                    },
+                ],
+            },
+        ],
+    },
+    DEVICE_CLASS_ATMOSPHERIC_PRESSURE: {
+        CONF_DEVICE_TYPE: "CUSTOM_ATTR",
+        CONF_CLUSTERS: [
+            {
+                CONF_ID: "PRESSURE_MEASUREMENT",
+                CONF_ROLE: "SERVER",
+                CONF_ATTRIBUTES: [
+                    {
+                        CONF_ATTRIBUTE_ID: 0x0,
+                        CONF_VALUE: 0,
+                        CONF_ACCESS: 0,
+                        CONF_TYPE: "S16",
+                        CONF_REPORT: True,
+                        CONF_SCALE: 1,
+                        CONF_DEVICE: None,
+                    },
+                ],
+            },
+        ],
+    },
+    DEVICE_CLASS_ILLUMINANCE: {
+        CONF_DEVICE_TYPE: "CUSTOM_ATTR",
+        CONF_CLUSTERS: [
+            {
+                CONF_ID: "ILLUMINANCE_MEASUREMENT",
+                CONF_ROLE: "SERVER",
+                CONF_ATTRIBUTES: [
+                    {
+                        CONF_ATTRIBUTE_ID: 0x0,
+                        CONF_VALUE: 0,
+                        CONF_ACCESS: 0,
+                        CONF_TYPE: "U16",
+                        CONF_REPORT: True,
+                        CONF_LAMBDA: cv.lambda_(Lambda("return log10(x)*10000 + 1;")),
+                        CONF_SCALE: 1,
                         CONF_DEVICE: None,
                     },
                 ],
