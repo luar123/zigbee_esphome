@@ -168,13 +168,13 @@ def get_c_type(attr_type):
         return cg.double
     if "STRING" in attr_type:
         return cg.std_string
-    test = re.match(r"(^U?)(\d{1,2})(BITMAP$|BIT$|BIT_ENUM$|$)", attr_type)
+    test = re.match(r"^(DATA|UINT|INT|MAP|ENUM)(\d{1,2})$", attr_type)
     if test and test.group(2):
         return getattr(cg, "uint" + get_c_size(test.group(2), [8, 16, 32, 64]))
     test = re.match(r"^S(\d{1,2})$", attr_type)
     if test and test.group(1):
         return getattr(cg, "int" + get_c_size(test.group(1), [16, 32, 64]))
-    raise EsphomeError(f"Zigbee: type {attr_type} not supported or implemented")
+    raise EsphomeError(f"Zigbee: type {attr_type} not supported or implemented 1")
 
 
 def get_cv_by_type(attr_type):
@@ -184,13 +184,13 @@ def get_cv_by_type(attr_type):
         return cv.float_
     if "STRING" in attr_type:
         return cv.string
-    test = re.match(r"(^U?)(\d{1,2})(BITMAP$|BIT$|BIT_ENUM$|$)", attr_type)
+    test = re.match(r"^(DATA|UINT|INT|MAP|ENUM)(\d{1,2})$", attr_type)
     if test and test.group(2):
         return cv.positive_int
     test = re.match(r"^S(\d{1,2})$", attr_type)
     if test and test.group(1):
         return cv.int_
-    raise cv.Invalid(f"Zigbee: type {attr_type} not supported or implemented")
+    raise cv.Invalid(f"Zigbee: type {attr_type} not supported or implemented 2")
 
 
 def get_default_by_type(attr_type):
@@ -314,7 +314,9 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_ENDPOINTS): cv.ensure_list(
                 cv.Schema(
                     {
-                        cv.Required(CONF_DEVICE_TYPE): cv.enum(DEVICE_ID, upper=True),
+                        cv.Required(CONF_DEVICE_TYPE): cv.Any(
+                            cv.enum(DEVICE_ID, upper=True), cv.int_range(0xFFF0, 0xFFFF)
+                        ),
                         cv.Optional(CONF_NUM): cv.int_range(1, 240),
                         cv.Optional(CONF_CLUSTERS): cv.ensure_list(
                             cv.Schema(
@@ -521,12 +523,8 @@ async def attributes_to_code(var, ep_num, cl):
 
 async def to_code(config):
     add_idf_component(
-        name="espressif/esp-zboss-lib",
-        ref="1.6.4",
-    )
-    add_idf_component(
         name="espressif/esp-zigbee-lib",
-        ref="1.6.8",
+        ref="2.0.0",
     )
 
     add_idf_sdkconfig_option("CONFIG_ZB_ENABLED", True)
@@ -534,13 +532,12 @@ async def to_code(config):
         add_idf_sdkconfig_option("CONFIG_ZB_ZCZR", True)
     else:
         add_idf_sdkconfig_option("CONFIG_ZB_ZED", True)
-    add_idf_sdkconfig_option("CONFIG_ZB_RADIO_NATIVE", True)
     # The pre-built Zigbee library uses esp_log_default_level which requires
     # dynamic log level control to be enabled
-    add_idf_sdkconfig_option("CONFIG_LOG_DYNAMIC_LEVEL_CONTROL", True)
+    # add_idf_sdkconfig_option("CONFIG_LOG_DYNAMIC_LEVEL_CONTROL", True)
 
     # add partitions for zigbee
-    add_partition("zb_storage", "data", "fat", 0x4000)  # 16KB
+    add_partition("zb_storage", "data", "nvs", 0x4000)  # 16KB
     add_partition("zb_fct", "data", "fat", 0x1000)  # 4KB, minimum size
 
     if CONF_WIFI in CORE.config:
@@ -585,9 +582,8 @@ async def to_code(config):
         )
     )
     for ep in ep_list:
-        cg.add(
-            var.create_default_cluster(ep[CONF_NUM], DEVICE_ID[ep[CONF_DEVICE_TYPE]])
-        )
+        device_id = DEVICE_ID.get(ep[CONF_DEVICE_TYPE], ep[CONF_DEVICE_TYPE])
+        cg.add(var.create_default_cluster(ep[CONF_NUM], device_id))
         for cl in ep.get(CONF_CLUSTERS, []):
             cg.add(
                 var.add_cluster(

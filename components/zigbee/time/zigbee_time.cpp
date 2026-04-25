@@ -7,7 +7,7 @@ namespace zigbee {
 void ZigbeeTime::send_timesync_request() {
   ESP_LOGD(TAG, "Requesting time from coordinator...");
   uint16_t attributes[] = {ESP_ZB_ZCL_ATTR_TIME_TIME_ID, ESP_ZB_ZCL_ATTR_TIME_TIME_STATUS_ID};
-  esp_zb_zcl_read_attr_cmd_t read_req;
+  ezb_zcl_read_attr_cmd_t read_req;
   read_req.address_mode = ESP_ZB_APS_ADDR_MODE_16_ENDP_PRESENT;
   read_req.attr_field = attributes;
   read_req.attr_number = sizeof(attributes) / sizeof(uint16_t);
@@ -15,15 +15,15 @@ void ZigbeeTime::send_timesync_request() {
   read_req.zcl_basic_cmd.dst_endpoint = 1;
   read_req.zcl_basic_cmd.src_endpoint = 1;
   read_req.zcl_basic_cmd.dst_addr_u.addr_short = 0x0000;  // coordinator
-  if (esp_zb_lock_acquire(30 / portTICK_PERIOD_MS)) {
-    esp_zb_zcl_read_attr_cmd_req(&read_req);
-    esp_zb_lock_release();
+  if (ezb_lock_acquire(30 / portTICK_PERIOD_MS)) {
+    ezb_zcl_read_attr_cmd_req(&read_req);
+    ezb_lock_release();
     this->requested_ = true;
     ESP_LOGD(TAG, "Sent request");
   }
 }
 
-void ZigbeeTime::recieve_timesync_response(esp_zb_zcl_read_attr_resp_variable_t *variable) {
+void ZigbeeTime::recieve_timesync_response(ezb_zcl_read_attr_resp_variable_t *variable) {
   uint32_t utc = 0;
   uint8_t sync_status = 0;
   while (variable != nullptr) {

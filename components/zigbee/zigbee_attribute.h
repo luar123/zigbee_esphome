@@ -3,7 +3,7 @@
 #include <type_traits>
 
 #include "zigbee.h"
-#include "esp_zigbee_core.h"
+#include "esp_zigbee.h"
 #include "esphome/core/automation.h"
 #include "esphome/core/component.h"
 #include "esphome/core/defines.h"
@@ -45,7 +45,7 @@ class ZigBeeAttribute : public Component {
   void loop() override;
 
   template<typename T> void add_attr(uint8_t attr_access, uint8_t max_size, T value);
-  esp_zb_zcl_reporting_info_t get_reporting_info();
+  ezb_zcl_reporting_info_t get_reporting_info();
   void set_report(bool force);
   void report();
   template<typename T> void set_attr(const T &value);
@@ -53,15 +53,15 @@ class ZigBeeAttribute : public Component {
   uint8_t attr_type() { return attr_type_; }
 
   template<typename F> void add_on_value_callback(F &&callback) { on_value_callback_.add(std::forward<F>(callback)); }
-  void on_value(esp_zb_zcl_attribute_t attribute) { this->on_value_callback_.call(attribute); }
+  void on_value(ezb_zcl_attribute_t attribute) { this->on_value_callback_.call(attribute); }
 
+  // TODO handle void pointer
   void add_on_report_callback(
-      std::function<void(esp_zb_zcl_attribute_t attribute, esp_zb_zcl_addr_t src_address, uint8_t src_endpoint)>
-          callback) {
+      std::function<void(void *value, ezb_address_t src_address, uint8_t src_endpoint)> callback) {
     on_report_callback_.add(std::move(callback));
   }
-  void on_report(esp_zb_zcl_attribute_t attribute, esp_zb_zcl_addr_t src_address, uint8_t src_endpoint) {
-    this->on_report_callback_.call(attribute, src_address, src_endpoint);
+  void on_report(void *value, ezb_address_t src_address, uint8_t src_endpoint) {
+    this->on_report_callback_.call(value, src_address, src_endpoint);
   }
   bool report_enabled = false;
 
@@ -97,9 +97,8 @@ class ZigBeeAttribute : public Component {
   uint8_t attr_type_;
   uint8_t max_size_;
   float scale_;
-  CallbackManager<void(esp_zb_zcl_attribute_t attribute)> on_value_callback_{};
-  CallbackManager<void(esp_zb_zcl_attribute_t attribute, esp_zb_zcl_addr_t src_address, uint8_t src_endpoint)>
-      on_report_callback_{};
+  CallbackManager<void(ezb_zcl_attribute_t attribute)> on_value_callback_{};
+  CallbackManager<void(void *value, ezb_address_t src_address, uint8_t src_endpoint)> on_report_callback_{};
   void *value_p{nullptr};
   bool set_attr_requested_{false};
   bool report_requested_{false};
@@ -171,7 +170,7 @@ template<typename T> void ZigBeeAttribute::connect(text_sensor::TextSensor *sens
 
 #ifdef USE_SWITCH
 template<typename T> void ZigBeeAttribute::connect(switch_::Switch *device) {
-  this->add_on_value_callback([=, this](esp_zb_zcl_attribute_t attribute) {
+  this->add_on_value_callback([=, this](ezb_zcl_attribute_t attribute) {
     if (attribute.data.type == this->attr_type() && attribute.data.value) {
       if (get_value_by_type<T>(this->attr_type(), attribute.data.value)) {
         device->turn_on();
@@ -184,7 +183,7 @@ template<typename T> void ZigBeeAttribute::connect(switch_::Switch *device) {
 }
 
 template<typename T> void ZigBeeAttribute::connect(switch_::Switch *device, std::function<bool(T)> &&f) {
-  this->add_on_value_callback([=, this](esp_zb_zcl_attribute_t attribute) {
+  this->add_on_value_callback([=, this](ezb_zcl_attribute_t attribute) {
     if (attribute.data.type == this->attr_type() && attribute.data.value) {
       if (f(get_value_by_type<T>(this->attr_type(), attribute.data.value))) {
         device->turn_on();
@@ -198,7 +197,7 @@ template<typename T> void ZigBeeAttribute::connect(switch_::Switch *device, std:
 
 #ifdef USE_LIGHT
 template<typename T> void ZigBeeAttribute::connect(light::LightState *device) {
-  this->add_on_value_callback([=, this](esp_zb_zcl_attribute_t attribute) {
+  this->add_on_value_callback([=, this](ezb_zcl_attribute_t attribute) {
     if (attribute.data.type == this->attr_type() && attribute.data.value) {
       light::LightCall call = device->make_call();
       ESP_LOGD(TAG, "Make light call");

@@ -62,11 +62,11 @@ template<typename Ts> class ZigBeeOnValueTrigger : public Trigger<Ts>, public Co
  public:
   explicit ZigBeeOnValueTrigger(ZigBeeAttribute *parent) : parent_(parent) {}
   void setup() override {
-    this->parent_->add_on_value_callback([this](esp_zb_zcl_attribute_t attribute) { this->on_value_(attribute); });
+    this->parent_->add_on_value_callback([this](ezb_zcl_attribute_t attribute) { this->on_value_(attribute); });
   }
 
  protected:
-  void on_value_(esp_zb_zcl_attribute_t attribute) {
+  void on_value_(ezb_zcl_attribute_t attribute) {
     if (attribute.data.type == parent_->attr_type() && attribute.data.value) {
       this->trigger(get_value_by_type<Ts>(parent_->attr_type(), attribute.data.value));
     }
@@ -76,7 +76,7 @@ template<typename Ts> class ZigBeeOnValueTrigger : public Trigger<Ts>, public Co
 
 template<typename T> struct ZigBeeReportData {
   T value;
-  esp_zb_zcl_addr_t src_address;
+  ezb_address_t src_address;
   uint8_t src_endpoint;
 };
 
@@ -85,13 +85,13 @@ template<typename T> class ZigBeeOnReportTrigger : public Trigger<ZigBeeReportDa
   explicit ZigBeeOnReportTrigger(ZigBeeAttribute *parent) : parent_(parent) {}
   void setup() override {
     this->parent_->add_on_report_callback(
-        [this](esp_zb_zcl_attribute_t attribute, esp_zb_zcl_addr_t src_address, uint8_t src_endpoint) {
+        [this](ezb_zcl_attribute_t attribute, ezb_address_t src_address, uint8_t src_endpoint) {
           this->on_report_(attribute, src_address, src_endpoint);
         });
   }
 
  protected:
-  void on_report_(esp_zb_zcl_attribute_t attribute, esp_zb_zcl_addr_t src_address, uint8_t src_endpoint) {
+  void on_report_(ezb_zcl_attribute_t attribute, ezb_address_t src_address, uint8_t src_endpoint) {
     if (attribute.data.type == parent_->attr_type() && attribute.data.value) {
       this->trigger(ZigBeeReportData<T>{
           .value = get_value_by_type<T>(parent_->attr_type(), attribute.data.value),
@@ -105,43 +105,43 @@ template<typename T> class ZigBeeOnReportTrigger : public Trigger<ZigBeeReportDa
 
 template<class T> T get_value_by_type(uint8_t attr_type, void *data) {
   switch (attr_type) {
-    case ESP_ZB_ZCL_ATTR_TYPE_SEMI:
+    case EZB_ZCL_ATTR_TYPE_SEMI:
       return 0;  //(T) * (std::float16_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_OCTET_STRING:
+    case EZB_ZCL_ATTR_TYPE_OCTSTR:
       return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_CHAR_STRING:
+    case EZB_ZCL_ATTR_TYPE_STRING:
       return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_LONG_OCTET_STRING:
+    case EZB_ZCL_ATTR_TYPE_OCTSTR16:
       return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_LONG_CHAR_STRING:
+    case EZB_ZCL_ATTR_TYPE_STRING16:
       return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_ARRAY:
+    case EZB_ZCL_ATTR_TYPE_ARRAY:
       return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_16BIT_ARRAY:
+    case EZB_ZCL_ATTR_TYPE_ARRAY_DATA16:
       return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_32BIT_ARRAY:
+    case EZB_ZCL_ATTR_TYPE_ARRAY_DATA32:
       return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_STRUCTURE:
+    case EZB_ZCL_ATTR_TYPE_STRUCT:
       return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_SET:
+    case EZB_ZCL_ATTR_TYPE_SET:
       return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_BAG:
+    case EZB_ZCL_ATTR_TYPE_BAG:
       return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_TIME_OF_DAY:
+    case EZB_ZCL_ATTR_TYPE_TOD:
       return (T) * (uint32_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_DATE:
+    case EZB_ZCL_ATTR_TYPE_DATE:
       return (T) * (uint32_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_UTC_TIME:
+    case EZB_ZCL_ATTR_TYPE_UTC:
       return (T) * (uint32_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_CLUSTER_ID:
+    case EZB_ZCL_ATTR_TYPE_CLUSTER_ID:
       return (T) * (uint16_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_ATTRIBUTE_ID:
+    case EZB_ZCL_ATTR_TYPE_ATTRIBUTE_ID:
       return (T) * (uint16_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_BACNET_OID:
+    case EZB_ZCL_ATTR_TYPE_BAC_OID:
       return 0;
-    case ESP_ZB_ZCL_ATTR_TYPE_IEEE_ADDR:
+    case EZB_ZCL_ATTR_TYPE_EUI64:
       return (T) * (uint64_t *) data;
-    case ESP_ZB_ZCL_ATTR_TYPE_128_BIT_KEY:
+    case EZB_ZCL_ATTR_TYPE_KEY128:
       return 0;
     default:
       return *(T *) data;

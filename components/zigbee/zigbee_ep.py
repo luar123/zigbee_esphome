@@ -64,7 +64,7 @@ from .types import ZigBeeAttribute
 # endpoint configs:
 ep_configs = {
     "binary_input": {
-        CONF_DEVICE_TYPE: "CUSTOM_ATTR",
+        CONF_DEVICE_TYPE: 0xFFF2,
         CONF_CLUSTERS: [
             {
                 CONF_ID: "BINARY_INPUT",
@@ -91,14 +91,14 @@ ep_configs = {
                         CONF_ATTRIBUTE_ID: 0x6F,
                         CONF_VALUE: 0,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "8BITMAP",
+                        CONF_TYPE: "MAP8",
                         CONF_REPORT: False,
                         CONF_SCALE: 1,
                     },
                     {
                         CONF_ATTRIBUTE_ID: 0x1C,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "CHAR_STRING",
+                        CONF_TYPE: "STRING",
                         CONF_REPORT: False,
                         CONF_SCALE: 1,
                     },
@@ -107,7 +107,7 @@ ep_configs = {
         ],
     },
     "analog_input": {
-        CONF_DEVICE_TYPE: "CUSTOM_ATTR",
+        CONF_DEVICE_TYPE: 0xFFF2,
         CONF_CLUSTERS: [
             {
                 CONF_ID: "ANALOG_INPUT",
@@ -134,14 +134,14 @@ ep_configs = {
                         CONF_ATTRIBUTE_ID: 0x6F,
                         CONF_VALUE: 0,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "8BITMAP",
+                        CONF_TYPE: "MAP8",
                         CONF_REPORT: False,
                         CONF_SCALE: 1,
                     },
                     {
                         CONF_ATTRIBUTE_ID: 0x1C,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "CHAR_STRING",
+                        CONF_TYPE: "STRING",
                         CONF_REPORT: False,
                         CONF_SCALE: 1,
                     },
@@ -150,7 +150,7 @@ ep_configs = {
         ],
     },
     "binary_output": {
-        CONF_DEVICE_TYPE: "CUSTOM_ATTR",
+        CONF_DEVICE_TYPE: 0xFFF2,
         CONF_CLUSTERS: [
             {
                 CONF_ID: "BINARY_OUTPUT",
@@ -177,14 +177,14 @@ ep_configs = {
                         CONF_ATTRIBUTE_ID: 0x6F,
                         CONF_VALUE: 0,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "8BITMAP",
+                        CONF_TYPE: "MAP8",
                         CONF_REPORT: False,
                         CONF_SCALE: 1,
                     },
                     {
                         CONF_ATTRIBUTE_ID: 0x1C,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "CHAR_STRING",
+                        CONF_TYPE: "STRING",
                         CONF_REPORT: False,
                         CONF_SCALE: 1,
                     },
@@ -196,14 +196,14 @@ ep_configs = {
         CONF_DEVICE_TYPE: "TEMPERATURE_SENSOR",
         CONF_CLUSTERS: [
             {
-                CONF_ID: "TEMP_MEASUREMENT",
+                CONF_ID: "TEMPERATURE_MEASUREMENT",
                 CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
                         CONF_VALUE: 0,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "S16",
+                        CONF_TYPE: "INT16",
                         CONF_REPORT: True,
                         CONF_SCALE: 100,
                         CONF_DEVICE: None,
@@ -213,7 +213,7 @@ ep_configs = {
         ],
     },
     DEVICE_CLASS_HUMIDITY: {
-        CONF_DEVICE_TYPE: "CUSTOM_ATTR",
+        CONF_DEVICE_TYPE: 0xFFF2,
         CONF_CLUSTERS: [
             {
                 CONF_ID: "REL_HUMIDITY_MEASUREMENT",
@@ -223,7 +223,7 @@ ep_configs = {
                         CONF_ATTRIBUTE_ID: 0x0,
                         CONF_VALUE: 0,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "U16",
+                        CONF_TYPE: "UINT16",
                         CONF_REPORT: True,
                         CONF_SCALE: 100,
                         CONF_DEVICE: None,
@@ -233,7 +233,7 @@ ep_configs = {
         ],
     },
     DEVICE_CLASS_ATMOSPHERIC_PRESSURE: {
-        CONF_DEVICE_TYPE: "CUSTOM_ATTR",
+        CONF_DEVICE_TYPE: 0xFFF2,
         CONF_CLUSTERS: [
             {
                 CONF_ID: "PRESSURE_MEASUREMENT",
@@ -243,7 +243,7 @@ ep_configs = {
                         CONF_ATTRIBUTE_ID: 0x0,
                         CONF_VALUE: 0,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "S16",
+                        CONF_TYPE: "INT16",
                         CONF_REPORT: True,
                         CONF_SCALE: 1,
                         CONF_DEVICE: None,
@@ -253,7 +253,7 @@ ep_configs = {
         ],
     },
     DEVICE_CLASS_ILLUMINANCE: {
-        CONF_DEVICE_TYPE: "CUSTOM_ATTR",
+        CONF_DEVICE_TYPE: 0xFFF2,
         CONF_CLUSTERS: [
             {
                 CONF_ID: "ILLUMINANCE_MEASUREMENT",
@@ -263,7 +263,7 @@ ep_configs = {
                         CONF_ATTRIBUTE_ID: 0x0,
                         CONF_VALUE: 0,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "U16",
+                        CONF_TYPE: "UINT16",
                         CONF_REPORT: True,
                         CONF_LAMBDA: cv.lambda_(Lambda("return log10(x)*10000 + 1;")),
                         CONF_SCALE: 1,
@@ -332,14 +332,14 @@ ep_configs = {
                 ],
             },
             {
-                CONF_ID: "LEVEL_CONTROL",
+                CONF_ID: "LEVEL",
                 CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
                         CONF_VALUE: 255,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "U8",
+                        CONF_TYPE: "UINT8",
                         CONF_REPORT: True,
                         CONF_SCALE: 1,
                         CONF_DEVICE: None,
@@ -354,7 +354,7 @@ ep_configs = {
                         CONF_ATTRIBUTE_ID: 0x3,
                         CONF_VALUE: 0x616B,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "U16",
+                        CONF_TYPE: "UINT16",
                         CONF_REPORT: True,
                         CONF_SCALE: 1,
                         CONF_DEVICE: None,
@@ -363,7 +363,7 @@ ep_configs = {
                         CONF_ATTRIBUTE_ID: 0x4,
                         CONF_VALUE: 0x607D,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "U16",
+                        CONF_TYPE: "UINT16",
                         CONF_REPORT: True,
                         CONF_SCALE: 1,
                         CONF_DEVICE: None,
@@ -372,7 +372,7 @@ ep_configs = {
                         CONF_ATTRIBUTE_ID: 0x400A,
                         CONF_VALUE: 8,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "16BITMAP",
+                        CONF_TYPE: "MAP16",
                         CONF_REPORT: False,
                         CONF_SCALE: 1,
                     },
@@ -406,7 +406,7 @@ ep_configs = {
                         CONF_ATTRIBUTE_ID: 0x0,
                         CONF_VALUE: 255,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "U8",
+                        CONF_TYPE: "UINT8",
                         CONF_REPORT: True,
                         CONF_SCALE: 1,
                         CONF_DEVICE: None,

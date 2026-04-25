@@ -12,9 +12,8 @@
 
 #include "esp_zb_event.h"
 
-#include "esp_zigbee_core.h"
-#include "zboss_api.h"
-#include "ha/esp_zigbee_ha_standard.h"
+#include "esp_zigbee.h"
+#include "ezbee/zha.h"
 #include "zigbee_helpers.h"
 
 #ifdef USE_ZIGBEE_TIME
@@ -27,8 +26,8 @@ namespace zigbee {
 static const char *const TAG = "zigbee";
 static constexpr uint8_t MAX_ZB_QUEUE_SIZE = 32;
 
-using device_params_t = struct DeviceParamsS {
-  esp_zb_ieee_addr_t ieee_addr;
+using zb_device_params_t = struct DeviceParamsS {
+  ezb_extaddr_t ieee_addr;
   uint8_t endpoint;
   uint16_t short_addr;
 };
@@ -38,25 +37,16 @@ using zdo_info_user_ctx_t = struct ZdoInfoCtxS {
   uint16_t short_addr;
 };
 
-using zb_device_params_t = struct zb_device_params_s {
-  esp_zb_ieee_addr_t ieee_addr;
-  uint8_t endpoint;
-  uint16_t short_addr;
-};
-
 /* Zigbee configuration */
 #define INSTALLCODE_POLICY_ENABLE false /* enable the install code policy for security */
-#define ED_AGING_TIMEOUT ESP_ZB_ED_AGING_TIMEOUT_64MIN
+#define ED_AGING_TIMEOUT EZB_NWK_ED_TIMEOUT_64MIN
 #define ED_KEEP_ALIVE 3000 /* 3000 millisecond */
 #define MAX_CHILDREN 10
-#define ESP_ZB_PRIMARY_CHANNEL_MASK \
-  ESP_ZB_TRANSCEIVER_ALL_CHANNELS_MASK /* Zigbee primary channel mask use in the example */
+#define EZB_PRIMARY_CHANNEL_MASK (0x07FFF800U) /* Zigbee primary channel mask use in the example */
+#define ESP_ZIGBEE_STORAGE_PARTITION_NAME "zb_storage"
 
-#define ESP_ZB_DEFAULT_RADIO_CONFIG() \
-  { .radio_mode = ZB_RADIO_MODE_NATIVE, }
-
-#define ESP_ZB_DEFAULT_HOST_CONFIG() \
-  { .host_connection_mode = ZB_HOST_CONNECTION_MODE_NONE, }
+#define EZB_DEFAULT_RADIO_CONFIG() \
+  { .radio_mode = ESP_ZIGBEE_RADIO_MODE_NATIVE, }
 
 template<class T> T get_value_by_type(uint8_t attr_type, void *data);
 uint8_t *get_zcl_string(const char *str, uint8_t max_size, bool use_max_size = false);
@@ -69,15 +59,13 @@ class ZigBeeComponent : public Component {
   void setup() override;
   void loop() override;
   void dump_config() override;
-  esp_err_t create_endpoint(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id,
-                            esp_zb_cluster_list_t *esp_zb_cluster_list);
   void set_basic_cluster(std::string model, std::string manufacturer, std::string date, uint8_t power,
                          uint8_t app_version, uint8_t stack_version, uint8_t hw_version, std::string area,
                          uint8_t physical_env);
   void set_trust_center_key(const char *trust_center_key);
   void set_device_version(uint8_t version) { this->device_version_ = version; }
   void add_cluster(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role);
-  void create_default_cluster(uint8_t endpoint_id, esp_zb_ha_standard_devices_t device_id);
+  void create_default_cluster(uint8_t endpoint_id, uint16_t device_id);
 
   template<typename T>
   void add_attr(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
@@ -87,17 +75,19 @@ class ZigBeeComponent : public Component {
   void add_attr(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id, uint8_t attr_type,
                 uint8_t attr_access, uint8_t max_size, T value);
 
-  void handle_attribute(esp_zb_device_cb_common_info_t info, esp_zb_zcl_attribute_t attribute, uint8_t *current_level);
-  void handle_report_attribute(uint8_t dst_endpoint, uint16_t cluster, esp_zb_zcl_attribute_t attribute,
-                               esp_zb_zcl_addr_t src_address, uint8_t src_endpoint);
-  void handle_read_attribute_response(esp_zb_zcl_cmd_info_t info, esp_zb_zcl_read_attr_resp_variable_t *variables);
+  static bool app_signal_handler(const ezb_app_signal_t *app_signal);
+  void handle_attribute(ezb_zcl_message_info_t info, ezb_zcl_attribute_t attribute, uint8_t *current_level);
+  void handle_report_attribute(uint8_t dst_endpoint, uint16_t cluster, ezb_zcl_report_attr_variable_t variables,
+                               ezb_address_t src_address, uint8_t src_endpoint);
+  void handle_read_attribute_response(ezb_zcl_message_info_t info, ezb_zcl_read_attr_rsp_variable_t *variables);
   void searchBindings();
-  static void bindingTableCb(const esp_zb_zdo_binding_table_info_t *table_info, void *user_ctx);
+  static void bindingTableCb(const ezb_zdo_nwk_mgmt_bind_req_result_t *table_info, void *user_ctx);
+  static void esp_zigbee_alarm_bdb_commissioning(ezb_bdb_comm_mode_mask_t mode);
 
   void reset() {
-    esp_zb_lock_acquire(portMAX_DELAY);
-    esp_zb_factory_reset();
-    esp_zb_lock_release();
+    esp_zigbee_lock_acquire(portMAX_DELAY);
+    esp_zigbee_factory_reset();
+    esp_zigbee_lock_release();
   }
   void report();
 
@@ -127,32 +117,29 @@ class ZigBeeComponent : public Component {
     std::string area;
     uint8_t physical_env;
   } basic_cluster_data_;
-#ifdef ZB_ED_ROLE
-  esp_zb_nwk_device_type_t device_role_ = ESP_ZB_DEVICE_TYPE_ED;
-#else
-  esp_zb_nwk_device_type_t device_role_ = ESP_ZB_DEVICE_TYPE_ROUTER;
-#endif
 
  protected:
   template<typename... Args> friend void enqueue_zb_event(Args... args);
   esphome::LockFreeQueue<ZBEvent, MAX_ZB_QUEUE_SIZE> zb_events_;
   esphome::EventPool<ZBEvent, MAX_ZB_QUEUE_SIZE> zb_event_pool_;
-  esp_zb_attribute_list_t *create_basic_cluster_();
+  ezb_zcl_cluster_desc_t create_basic_cluster_();
   template<typename T>
   void add_attr_(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
                  uint8_t attr_type, uint8_t attr_access, T *value_p);
-  std::map<uint8_t, std::tuple<esp_zb_ha_standard_devices_t, esp_zb_cluster_list_t *>> endpoint_list_;
-  std::map<std::tuple<uint8_t, uint16_t, uint8_t>, esp_zb_attribute_list_t *> attribute_list_;
+  std::map<uint8_t, std::tuple<uint16_t, ezb_af_ep_desc_t>> endpoint_list_;
+  // std::map<std::tuple<uint8_t, uint16_t, uint8_t>, ezb_zcl_cluster_desc_t> attribute_list_;
   std::map<std::tuple<uint8_t, uint16_t, uint8_t, uint16_t>, ZigBeeAttribute *> attributes_;
-  esp_zb_ep_list_t *esp_zb_ep_list_ = esp_zb_ep_list_create();
+  ezb_af_device_desc_t dev_desc_ = ezb_af_create_device_desc();
   uint8_t ident_time_;
   bool custom_trust_center_key_ = false;
   uint8_t trustkey_[16] = {0};
   uint8_t device_version_ = 0;
+#ifdef ZB_ED_ROLE
+  ezb_nwk_device_type_t device_role_ = EZB_NWK_DEVICE_TYPE_END_DEVICE;
+#else
+  ezb_nwk_device_type_t device_role_ = EZB_NWK_DEVICE_TYPE_ROUTER;
+#endif
 };
-
-extern "C" void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct);
-extern "C" void zb_set_ed_node_descriptor(bool power_src, bool rx_on_when_idle, bool alloc_addr);
 
 template<typename T>
 void ZigBeeComponent::add_attr(uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
@@ -181,12 +168,13 @@ void ZigBeeComponent::add_attr(ZigBeeAttribute *attr, uint8_t endpoint_id, uint1
 template<typename T>
 void ZigBeeComponent::add_attr_(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role,
                                 uint16_t attr_id, uint8_t attr_type, uint8_t attr_access, T *value_p) {
-  esp_zb_attribute_list_t *attr_list = this->attribute_list_[{endpoint_id, cluster_id, role}];
+  ezb_zcl_cluster_desc_t cluster_desc =
+      ezb_af_endpoint_get_cluster_desc(std::get<1>(this->endpoint_list_[endpoint_id]), cluster_id, role);
   esp_err_t ret =
-      esphome_zb_cluster_add_or_update_attr(cluster_id, attr_list, attr_id, attr_type, attr_access, value_p);
+      esphome_zb_cluster_add_or_update_attr(cluster_id, cluster_desc, attr_id, attr_type, attr_access, value_p);
   if (ret != ESP_OK) {
-    ESP_LOGE(TAG, "Could not add attribute 0x%04X to cluster 0x%04X in endpoint %u: %s", attr_id, cluster_id,
-             endpoint_id, esp_err_to_name(ret));
+    ESP_LOGE(TAG, "Could not add attribute 0x%04X to cluster 0x%04X in endpoint %u: %u", attr_id, cluster_id,
+             endpoint_id, ret);
   }
   if (attr != nullptr) {
     this->attributes_[{endpoint_id, cluster_id, role, attr_id}] = attr;

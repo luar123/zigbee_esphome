@@ -185,7 +185,7 @@ zigbee:
                  #   // Value of the attribute sent from server side.
                  #   T value;
                  #   // Address of device which sent this value.
-                 #   esp_zb_zcl_addr_t src_address;
+                 #   ezb_zcl_addr_t src_address;
                  #   // Number of the endpoint on device which sent this value.
                  #   uint8_t src_endpoint;
                  # };
