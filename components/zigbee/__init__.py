@@ -40,6 +40,7 @@ from esphome.const import (
     CONF_WIFI,
 )
 from esphome.core import CORE, EsphomeError
+from esphome.coroutine import CoroPriority, coroutine_with_priority
 import esphome.final_validate as fv
 
 from .const import (
@@ -51,6 +52,7 @@ from .const import (
     CONF_DEVICE_TYPE,
     CONF_DEVICE_VERSION,
     CONF_ENDPOINTS,
+    CONF_KEEP_ALIVE,
     CONF_MANUFACTURER,
     CONF_NUM,
     CONF_ON_JOIN,
@@ -59,6 +61,7 @@ from .const import (
     CONF_ROLE,
     CONF_ROUTER,
     CONF_SCALE,
+    CONF_SLEEPY,
     CONF_TRUST_CENTER_KEY,
     BinarySensor,
     Sensor,
@@ -275,6 +278,18 @@ def final_validate(config):
                 "The Zigbee Router might miss packets while Wifi is active and could destabilize "
                 "your network. Use only if Wifi is off most of the time."
             )
+    if config[CONF_SLEEPY]:
+        if config[CONF_ROUTER]:
+            raise cv.Invalid("Zigbee Router cannot be sleepy.")
+        if "power_management" not in fv.full_config.get():
+            raise cv.Invalid("Power management is needed for sleepy Zigbee devices.")
+        pm_conf = fv.full_config.get()["power_management"]
+        if pm_conf.get("enable_light_sleep", False) is False:
+            raise cv.Invalid("Light sleep must be enabled for sleepy Zigbee devices.")
+        if pm_conf.get("power_down_peripherals", False) is False:
+            raise cv.Invalid(
+                "Peripherals must be powered down for sleepy Zigbee devices."
+            )
     global comp_ids  # noqa: PLW0603
     comp_ids = len(CORE.component_ids)
     return config
@@ -306,6 +321,8 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_TRUST_CENTER_KEY): cv.bind_key,
             cv.Optional(CONF_DEVICE_VERSION): cv.int_,
             cv.Optional(CONF_DEBUG, default=False): cv.boolean,
+            cv.Optional(CONF_SLEEPY): cv.boolean,
+            cv.Optional(CONF_KEEP_ALIVE, default=3000): cv.int_range(100, 65535),
             cv.Optional(CONF_COMPONENTS): cv.Any(
                 cv.one_of("all", "none", lower=True),
                 cv.ensure_list(cv.use_id(cg.EntityBase)),
@@ -519,6 +536,11 @@ async def attributes_to_code(var, ep_num, cl):
             )
 
 
+@coroutine_with_priority(CoroPriority.WORKAROUNDS)
+async def add_sdkconfigs(config):
+    add_idf_sdkconfig_option("CONFIG_LIBC_LOCKS_PLACE_IN_IRAM", True)
+
+
 async def to_code(config):
     add_idf_component(
         name="espressif/esp-zboss-lib",
@@ -564,6 +586,9 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 
+    if CONF_SLEEPY in config:
+        cg.add(var.set_sleepy(config[CONF_SLEEPY]))
+    cg.add(var.set_keep_alive(config[CONF_KEEP_ALIVE]))
     if CONF_TRUST_CENTER_KEY in config:
         cg.add(var.set_trust_center_key(config[CONF_TRUST_CENTER_KEY]))
     if CONF_DEVICE_VERSION in config:
@@ -598,6 +623,7 @@ async def to_code(config):
             )
             await attributes_to_code(var, ep[CONF_NUM], cl)
     await automation.build_callback_automations(var, config, _CALLBACK_AUTOMATIONS)
+    await add_sdkconfigs(config)
 
 
 ZIGBEE_ACTION_SCHEMA = cv.Schema(

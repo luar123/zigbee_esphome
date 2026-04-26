@@ -11,6 +11,12 @@
 #include "esp_coexist.h"
 #endif
 
+#ifdef CONFIG_PM_ENABLE
+#include "esp_pm.h"
+#include "esp_private/esp_clk.h"
+#include "esp_sleep.h"
+#endif
+
 #if !(defined ZB_ED_ROLE || defined ZB_ROUTER_ROLE)
 #error Define ZB_ED_ROLE or ZB_ROUTER_ROLE in idf.py menuconfig.
 #endif
@@ -126,6 +132,12 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
         ESP_LOGD(TAG, "Leave_type: %u", leave_params->leave_type);
       }
       break;
+#ifdef CONFIG_FREERTOS_USE_TICKLESS_IDLE
+    case ESP_ZB_COMMON_SIGNAL_CAN_SLEEP:
+      ESP_LOGV(TAG, "Zigbee can sleep now");
+      esp_zb_sleep_now();
+      break;
+#endif
     default:
       ESP_LOGD(TAG, "ZDO signal: %s (0x%x), status: %s", esp_zb_zdo_signal_to_string(sig_type), sig_type,
                esp_err_to_name(err_status));
@@ -484,6 +496,7 @@ static void esp_zb_task_(void *pvParameters) {
 }
 
 void ZigBeeComponent::setup() {
+  esp_err_t ret;
   global_zigbee = this;
   esp_zb_platform_config_t config = {
       .radio_config = ESP_ZB_DEFAULT_RADIO_CONFIG(),
@@ -501,10 +514,14 @@ void ZigBeeComponent::setup() {
     return;
   }
 
+#ifdef CONFIG_FREERTOS_USE_TICKLESS_IDLE
+  ESP_LOGD(TAG, "Enabling Zigbee power management: %s", this->sleepy_ ? "enabled" : "disabled");
+  esp_zb_sleep_enable(this->sleepy_);  // allow the Zigbee stack to put the device to sleep when idle
+#endif
   /* initialize Zigbee stack */
   esp_zb_zed_cfg_t zb_zed_cfg = {
       .ed_timeout = ED_AGING_TIMEOUT,
-      .keep_alive = ED_KEEP_ALIVE,
+      .keep_alive = this->keep_alive_,
   };
   esp_zb_zczr_cfg_t zb_zczr_cfg = {
       .max_children = MAX_CHILDREN,
@@ -524,8 +541,6 @@ void ZigBeeComponent::setup() {
     esp_zb_enable_joining_to_distributed(true);
     esp_zb_secur_TC_standard_distributed_key_set(this->trustkey_);
   }
-
-  esp_err_t ret;
 
   // clusters
   for (auto const &[key, val] : this->attribute_list_) {

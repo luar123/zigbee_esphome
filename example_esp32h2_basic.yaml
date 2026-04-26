@@ -7,7 +7,6 @@ external_components:
 
 esp32:
   board: esp32-h2-devkitm-1
-  partitions: partitions_zb.csv
   framework:
     type: esp-idf
 
@@ -47,7 +46,7 @@ binary_sensor:
         pullup: true
       inverted: true
     id: button_1
-    name: "button1"
+    name: "button 1"
     #on_press:
     #  then:
     #    - zigbee.report: zb
