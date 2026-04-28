@@ -278,7 +278,7 @@ def final_validate(config):
                 "The Zigbee Router might miss packets while Wifi is active and could destabilize "
                 "your network. Use only if Wifi is off most of the time."
             )
-    if config[CONF_SLEEPY]:
+    if config.get(CONF_SLEEPY):
         if config[CONF_ROUTER]:
             raise cv.Invalid("Zigbee Router cannot be sleepy.")
         if "power_management" not in fv.full_config.get():
