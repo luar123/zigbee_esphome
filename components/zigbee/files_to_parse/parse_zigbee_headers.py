@@ -151,7 +151,7 @@ remove_dev_ids = [
 def write_zha_default_clusters(enums):
     enum = enums[0]
     ids = [e.name for e in enum.values.enumerators]
-    to_py = "ezb_af_ep_desc_t esphome_zb_zha_default_ep_desc_create(uint8_t ep_id, uint16_t device_id, uint8_t device_version) {\n"
+    to_py = "ezb_af_ep_desc_t esphome_zb_zha_default_ep_desc_create(uint8_t ep_id, uint16_t device_id, uint8_t device_version, uint8_t power_source) {\n"
     to_py += "  ezb_af_ep_desc_t ep_desc; \n"
     to_py += "  switch (device_id) {\n"
     for id in ids:
@@ -164,10 +164,12 @@ def write_zha_default_clusters(enums):
         if device_name in remove_dev_ids:
             continue
         to_py += f"    case {id}" + ": {\n"
-        to_py += f"      const ezb_zha_{device_name}_config_t config = EZB_ZHA_{device_name.upper()}_CONFIG();\n"
+        to_py += f"      ezb_zha_{device_name}_config_t config = EZB_ZHA_{device_name.upper()}_CONFIG();\n"
+        to_py += "      config.basic_cfg.power_source = power_source;\n"
         to_py += f"      ep_desc = ezb_zha_create_{device_name}(ep_id, &config);\n"
         to_py += "      break;\n    }\n"
-    to_py += "    default:\n      ep_desc = ezb_af_ep_desc_create(ep_id, device_id, device_version);\n  }\n  return ep_desc;\n}\n\n"
+    to_py += "    default:\n      ezb_af_ep_config_t config = {\n          .ep_id = ep_id,\n          .app_profile_id = EZB_AF_HA_PROFILE_ID,\n          .app_device_id = device_id,\n          .app_device_version = device_version,\n      };\n"
+    to_py += "      ep_desc = ezb_af_create_endpoint_desc(&config);\n  }\n  return ep_desc;\n}\n\n"
     return to_py
 
 

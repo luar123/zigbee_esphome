@@ -5,7 +5,8 @@ extern "C" {
 
 #include "esp_zigbee.h"
 
-ezb_af_ep_desc_t esphome_zb_zha_default_ep_desc_create(uint8_t ep_id, uint16_t device_id, uint8_t device_version);
+ezb_af_ep_desc_t esphome_zb_zha_default_ep_desc_create(uint8_t ep_id, uint16_t device_id, uint8_t device_version,
+                                                       uint8_t power_source);
 ezb_err_t esphome_zb_cluster_add_or_update_attr(uint16_t cluster_id, ezb_zcl_cluster_desc_t cluster_desc,
                                                 uint16_t attr_id, uint8_t attr_type, uint8_t attr_access,
                                                 void *value_p);

@@ -122,7 +122,7 @@ class ZigBeeComponent : public Component {
   template<typename... Args> friend void enqueue_zb_event(Args... args);
   esphome::LockFreeQueue<ZBEvent, MAX_ZB_QUEUE_SIZE> zb_events_;
   esphome::EventPool<ZBEvent, MAX_ZB_QUEUE_SIZE> zb_event_pool_;
-  ezb_zcl_cluster_desc_t create_basic_cluster_();
+  void update_basic_cluster_(ezb_af_ep_desc_t ep_desc);
   template<typename T>
   void add_attr_(ZigBeeAttribute *attr, uint8_t endpoint_id, uint16_t cluster_id, uint8_t role, uint16_t attr_id,
                  uint8_t attr_type, uint8_t attr_access, T *value_p);

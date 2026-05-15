@@ -383,10 +383,11 @@ void ZigBeeComponent::handle_read_attribute_response(ezb_zcl_message_info_t info
 }
 
 void ZigBeeComponent::create_default_cluster(uint8_t endpoint_id, uint16_t device_id) {
-  ezb_af_ep_desc_t ep_desc = esphome_zb_zha_default_ep_desc_create(endpoint_id, device_id, this->device_version_);
+  ezb_af_ep_desc_t ep_desc = esphome_zb_zha_default_ep_desc_create(endpoint_id, device_id, this->device_version_,
+                                                                   this->basic_cluster_data_.power);
   this->endpoint_list_[endpoint_id] = std::tuple<uint16_t, ezb_af_ep_desc_t>(device_id, ep_desc);
   // Add basic cluster
-  this->add_cluster(endpoint_id, EZB_ZCL_CLUSTER_ID_BASIC, EZB_ZCL_CLUSTER_SERVER);
+  this->update_basic_cluster_(ep_desc);
   // Add identify cluster if not already present
   if (ezb_af_endpoint_get_cluster_desc(ep_desc, EZB_ZCL_CLUSTER_ID_IDENTIFY, EZB_ZCL_CLUSTER_SERVER) == NULL) {
     this->add_cluster(endpoint_id, EZB_ZCL_CLUSTER_ID_IDENTIFY, EZB_ZCL_CLUSTER_SERVER);
@@ -397,9 +398,7 @@ void ZigBeeComponent::add_cluster(uint8_t endpoint_id, uint16_t cluster_id, uint
   ezb_zcl_cluster_desc_t cluster_desc;
   switch (cluster_id) {
     case 0:
-      ESP_LOGD(TAG, "Adding basic cluster");
-      cluster_desc = create_basic_cluster_();
-      break;
+      return;
     default:
       cluster_desc = esphome_zb_default_cluster_dscr_create(cluster_id, role);
   }
@@ -422,12 +421,18 @@ void ZigBeeComponent::set_basic_cluster(std::string model, std::string manufactu
   };
 }
 
-ezb_zcl_cluster_desc_t ZigBeeComponent::create_basic_cluster_() {
+void ZigBeeComponent::update_basic_cluster_(ezb_af_ep_desc_t ep_desc) {
   // ------------------------------ Cluster BASIC ------------------------------
-  ezb_zcl_basic_cluster_config_t basic_cluster_cfg = {
-      .zcl_version = EZB_ZCL_BASIC_ZCL_VERSION_DEFAULT_VALUE,
-      .power_source = this->basic_cluster_data_.power,
-  };
+  ezb_zcl_cluster_desc_t cluster_desc =
+      ezb_af_endpoint_get_cluster_desc(ep_desc, EZB_ZCL_CLUSTER_ID_BASIC, EZB_ZCL_CLUSTER_SERVER);
+  if (cluster_desc == NULL) {
+    ezb_zcl_basic_cluster_config_t basic_cluster_cfg = {
+        .zcl_version = EZB_ZCL_BASIC_ZCL_VERSION_DEFAULT_VALUE,
+        .power_source = this->basic_cluster_data_.power,
+    };
+    cluster_desc = ezb_zcl_basic_create_cluster_desc(&basic_cluster_cfg, EZB_ZCL_CLUSTER_SERVER);
+  }
+
   ESP_LOGD(TAG, "Model: %s", this->basic_cluster_data_.model.c_str());
   ESP_LOGD(TAG, "Manufacturer: %s", this->basic_cluster_data_.manufacturer.c_str());
   ESP_LOGD(TAG, "Date: %s", this->basic_cluster_data_.date.c_str());
@@ -437,7 +442,6 @@ ezb_zcl_cluster_desc_t ZigBeeComponent::create_basic_cluster_() {
   uint8_t *ModelIdentifier = get_zcl_string(this->basic_cluster_data_.model.c_str(), 32);
   uint8_t *DateCode = get_zcl_string(this->basic_cluster_data_.date.c_str(), 16);
   uint8_t *Location = get_zcl_string(this->basic_cluster_data_.area.c_str(), 16);
-  ezb_zcl_cluster_desc_t cluster_desc = ezb_zcl_basic_create_cluster_desc(&basic_cluster_cfg, EZB_ZCL_CLUSTER_SERVER);
   ezb_zcl_basic_cluster_desc_add_attr(cluster_desc, EZB_ZCL_ATTR_BASIC_APPLICATION_VERSION_ID,
                                       &(this->basic_cluster_data_.app_version));
   ezb_zcl_basic_cluster_desc_add_attr(cluster_desc, EZB_ZCL_ATTR_BASIC_STACK_VERSION_ID,
@@ -454,7 +458,7 @@ ezb_zcl_cluster_desc_t ZigBeeComponent::create_basic_cluster_() {
   delete[] ModelIdentifier;
   delete[] DateCode;
   delete[] Location;
-  return cluster_desc;
+  ezb_af_endpoint_add_cluster_desc(ep_desc, cluster_desc);
 }
 
 static void ezb_task_(void *pvParameters) {
@@ -509,6 +513,7 @@ void ZigBeeComponent::setup() {
     this->mark_failed();
     return;
   }
+  ezb_aps_secur_enable_distributed_security(false);
   if (ezb_bdb_set_primary_channel_set(EZB_PRIMARY_CHANNEL_MASK)) {
     ESP_LOGE(TAG, "Could not set primary channel mask");
     this->mark_failed();
@@ -554,11 +559,11 @@ void ZigBeeComponent::setup() {
 
   ezb_zcl_core_action_handler_register(zb_action_handler);
 
-  if (ezb_bdb_set_primary_channel_set(EZB_PRIMARY_CHANNEL_MASK) != ESP_OK) {
-    ESP_LOGE(TAG, "Could not setup Zigbee");
-    this->mark_failed();
-    return;
-  }
+  // if (ezb_bdb_set_primary_channel_set(EZB_PRIMARY_CHANNEL_MASK) != ESP_OK) {
+  //   ESP_LOGE(TAG, "Could not setup Zigbee");
+  //   this->mark_failed();
+  //   return;
+  // }
 
   // reporting
   for (auto &[_, attribute] : this->attributes_) {
