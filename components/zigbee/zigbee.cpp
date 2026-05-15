@@ -612,6 +612,9 @@ void ZigBeeComponent::loop() {
                                       event->event_.report_attr.src_endpoint);
 
         break;
+      default:
+        ESP_LOGW(TAG, "Received event with unhandled callback id: 0x%x", event->callback_id_);
+        break;
     }
 
     // Free the event back to the pool
