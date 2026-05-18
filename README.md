@@ -1,7 +1,8 @@
 > [!TIP]
-> **New simple Mode! No more endpoint definitions needed.**
+> **Experimental zigbee-sdk v2.0 implementation in [v2 branch](https://github.com/luar123/zigbee_esphome/tree/v2)**
 >
-> I started to implement the automated endpoint definition generation, see basic mode section for details.
+> Please test. For issues and limitations see [#96](https://github.com/luar123/zigbee_esphome/issues/96).
+> Once stable this will be merged into master. If you want to stay on v1.x you can use the v1.x branch.
 
 > [!Important]
 > **Please help to collect working cluster definitions [here](https://github.com/luar123/zigbee_esphome/discussions/22).**
