@@ -12,6 +12,7 @@ from esphome.components.esp32 import (
     add_extra_script,
     add_idf_component,
     add_idf_sdkconfig_option,
+    idf_version,
     only_on_variant,
 )
 from esphome.components.esp32.const import (
@@ -251,6 +252,10 @@ def validate_attributes(config):
 
 
 def final_validate(config):
+    if idf_version() >= cv.Version(6, 0, 0):
+        raise cv.Invalid(
+            "Zigbee component with sdk 2.0 is not supported on ESP-IDF v6.0.0 and above."
+        )
     esp_conf = fv.full_config.get()["esp32"]
     if CONF_PARTITIONS in esp_conf:
         with open(

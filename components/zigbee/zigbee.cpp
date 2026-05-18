@@ -519,6 +519,7 @@ void ZigBeeComponent::setup() {
     this->mark_failed();
     return;
   }
+  ezb_secur_set_tclk_exchange_required(false);
   if (ezb_app_signal_add_handler(this->app_signal_handler) != ESP_OK) {
     ESP_LOGE(TAG, "Could not set application signal handler");
     this->mark_failed();
