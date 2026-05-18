@@ -1,7 +1,7 @@
 > [!Warning]
 > **Experimental zigbee-sdk v2.0 implementation.**
 >
-> For issues and limitations see #96. Please test and report issues. Once stable, this will be merged into master. If you want to stay on v1.x you can use the v1.x branch.
+> For issues and limitations see [#96](https://github.com/luar123/zigbee_esphome/issues/96). Please test and report issues. Once stable, this will be merged into master. If you want to stay on v1.x you can use the v1.x branch.
 
 > [!Important]
 > **Please help to collect working cluster definitions [here](https://github.com/luar123/zigbee_esphome/discussions/22).**
