@@ -3,9 +3,10 @@
 External ZigBee component for ESPHome, enabling integration with Zigbee devices using the ESP Zigbee SDK.
 
 > [!TIP]
-> **New simple Mode! No more endpoint definitions needed.**
+> **Experimental zigbee-sdk v2.0 implementation in [v2 branch](https://github.com/luar123/zigbee_esphome/tree/v2)**
 >
-> I started to implement the automated endpoint definition generation, see basic mode section for details.
+> Please test. For issues and limitations see [#96](https://github.com/luar123/zigbee_esphome/issues/96).
+> Once stable this will be merged into master. If you want to stay on v1.x you can use the v1.x branch.
 
 > [!Important]
 > **Please help to collect working cluster definitions [here](https://github.com/luar123/zigbee_esphome/discussions/22).**
@@ -24,8 +25,10 @@ External ZigBee component for ESPHome, enabling integration with Zigbee devices 
 9. [Time Sync](#time-sync)
 10. [Troubleshooting](#troubleshooting)
 11. [Limitations](#limitations)
-12. [Contributing](#contributing)
-13. [External Documentation](#external-documentation)
+12. [ToDo List](#todo-list-short-mid-term)
+13. [Not Planned](#not-planned-feel-free-to-submit-a-pull-request)
+14. [Contributing](#contributing)
+15. [External Documentation](#external-documentation)
 
 ## Features
 
@@ -85,9 +88,14 @@ zigbee:
 * **manufacturer** (Optional, string): Zigbee Manufacturer Name in basic cluster. Used by coordinator to match custom converters. Defaults to "esphome"
 * **date** (Optional, string): Date Code in basic cluster. Defaults to build time
 * **power_supply** (Optional, int): Zigbee Power Source in basic cluster. See ZCL. Defaults to 0 = unknown
+  - `1` = single phase mains (USB)
+  - `2` = three phase mains
+  - `3` = battery
 * **version** (Optional, int): Zigbee App Version in basic cluster. Defaults to 0
 * **area** (Optional, int): Zigbee Physical Environment in basic cluster. See ZCL. Defaults to 0 = unknown
 * **router** (Optional, bool): Create a router device instead of an end device. Defaults to false
+* **device_version** (Optional, int): Set the Home Automation Profile device version. Custom values might be needed for compatibility with some vendors. Defaults to 0
+* **trust_center_key** (Optional, bind_key): Set custom trust center key. 32 digits hex number.
 * **debug** (Optional, bool): Print zigbee stack debug messages
 * **components** (Optional, string|list): all: add definitions for all supported components that have a name and are not marked as internal. None: Add no definitions (default). List of component ids: Add only those. Can be combined with manual definitions in endpoints
 * **as_generic** (Optional, bool): Use generic/basic clusters where possible. Currently sensors and switches. Defaults to false
@@ -95,7 +103,14 @@ zigbee:
 
 ## Basic Mode
 
-By adding `components: all` the endpoint definition is generated automatically. Currently sensor, binary_sensor, light and switch components are supported. Because this is an external component the whole implementation is a bit hacky and likely to fail with some setups. Also it is not possible to tweak the generated definitions. Each entity creates a new endpoint.
+By adding `components: all` the endpoint definition is generated automatically. Currently sensor, binary_sensor, light and switch components are supported. Because this is an external component the whole implementation is a bit hacky and likely to fail with some setups. Also it is not possible to tweak the generated definitions. Each entity creates a new endpoint. For sensors the unit/type is set automatically. Please note that these definitions are not complete. Feel free to open an issue or pull request (see zigbee_ep.py)
+
+| ESPHome Entity  | Zigbee Cluster                                                     |
+| --------------- | ------------------------------------------------------------------ |
+| `light`         | `light`                                                            |
+| `switch`        | `on_off`, `binary_output`                                          |
+| `binary_sensor` | `binary_input`                                                     |
+| `sensor`        | `analog_input` or mapped to specific (e.g. `temperature`) clusters |
 
 **Important**: you must include the required partition table file in your ESP32 configuration each time that you using this components:
 
@@ -265,6 +280,19 @@ time:
 * **Zigbee2MQTT Sensors**: Analog input cluster (used for sensors) is supported by 2025 October release, but ignores type and unit
 * **ZHA Compatibility**: Analog input cluster (used for sensors) without unit/type is ignored
 * **ZHA Reporting**: Minimum reporting interval is set to high values (30s) for some sensors and can't be changed. Keep that in mind if reporting seems not to work properly.
+
+## ToDo List (Short-Mid term)
+
+- Light effects (through identify cluster commands)
+- more components to support basic mode
+
+## Not planned (feel free to submit a pull request)
+
+- [Zigbee ZCL OTA Upgrade Cluster](https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32/user-guide/zcl_ota_upgrade.html) and related [OTA API for ESP Zigbee SDK](https://docs.espressif.com/projects/esp-zigbee-sdk/en/latest/esp32/api-reference/esp_zigbee_ota.html) to allow OTA (over-the-air) firmware updates via Zigbee
+- Coordinator devices
+- Binding config in yaml
+- Reporting config in yaml
+- Control device support like switches ([workaround](https://github.com/luar123/zigbee_esphome/discussions/18#discussioncomment-11875376))
 
 ## Contributing
 
