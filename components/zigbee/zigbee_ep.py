@@ -1,21 +1,24 @@
 import copy
 
-from esphome.components import binary_sensor, light, output, sensor, switch
+from esphome.components import light, output
 import esphome.config_validation as cv
 from esphome.const import (
     CONF_COMPONENTS,
     CONF_DEVICE,
     CONF_DEVICE_CLASS,
     CONF_ID,
+    CONF_LAMBDA,
     CONF_MAX_LENGTH,
     CONF_TYPE,
     CONF_UNIT_OF_MEASUREMENT,
     CONF_VALUE,
+    DEVICE_CLASS_ATMOSPHERIC_PRESSURE,
     DEVICE_CLASS_CURRENT,
     DEVICE_CLASS_DURATION,
     DEVICE_CLASS_ENERGY,
     DEVICE_CLASS_FREQUENCY,
     DEVICE_CLASS_HUMIDITY,
+    DEVICE_CLASS_ILLUMINANCE,
     DEVICE_CLASS_POWER,
     DEVICE_CLASS_PRESSURE,
     DEVICE_CLASS_TEMPERATURE,
@@ -36,7 +39,7 @@ from esphome.const import (
     UNIT_VOLT,
     UNIT_WATT,
 )
-from esphome.core import CORE, ID
+from esphome.core import CORE, ID, Lambda
 
 from .const import (
     CONF_ACCESS,
@@ -52,18 +55,20 @@ from .const import (
     CONF_SCALE,
     AnalogInputType,
     BacnetUnit,
+    BinarySensor,
+    Sensor,
+    Switch,
 )
 from .types import ZigBeeAttribute
-from .zigbee_const import CLUSTER_ROLE
 
 # endpoint configs:
 ep_configs = {
     "binary_input": {
-        CONF_DEVICE_TYPE: "CUSTOM_ATTR",
+        CONF_DEVICE_TYPE: 0xFFF2,
         CONF_CLUSTERS: [
             {
                 CONF_ID: "BINARY_INPUT",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x55,
@@ -86,14 +91,14 @@ ep_configs = {
                         CONF_ATTRIBUTE_ID: 0x6F,
                         CONF_VALUE: 0,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "8BITMAP",
+                        CONF_TYPE: "MAP8",
                         CONF_REPORT: False,
                         CONF_SCALE: 1,
                     },
                     {
                         CONF_ATTRIBUTE_ID: 0x1C,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "CHAR_STRING",
+                        CONF_TYPE: "STRING",
                         CONF_REPORT: False,
                         CONF_SCALE: 1,
                     },
@@ -102,11 +107,11 @@ ep_configs = {
         ],
     },
     "analog_input": {
-        CONF_DEVICE_TYPE: "CUSTOM_ATTR",
+        CONF_DEVICE_TYPE: 0xFFF2,
         CONF_CLUSTERS: [
             {
                 CONF_ID: "ANALOG_INPUT",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x55,
@@ -129,14 +134,14 @@ ep_configs = {
                         CONF_ATTRIBUTE_ID: 0x6F,
                         CONF_VALUE: 0,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "8BITMAP",
+                        CONF_TYPE: "MAP8",
                         CONF_REPORT: False,
                         CONF_SCALE: 1,
                     },
                     {
                         CONF_ATTRIBUTE_ID: 0x1C,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "CHAR_STRING",
+                        CONF_TYPE: "STRING",
                         CONF_REPORT: False,
                         CONF_SCALE: 1,
                     },
@@ -145,11 +150,11 @@ ep_configs = {
         ],
     },
     "binary_output": {
-        CONF_DEVICE_TYPE: "CUSTOM_ATTR",
+        CONF_DEVICE_TYPE: 0xFFF2,
         CONF_CLUSTERS: [
             {
                 CONF_ID: "BINARY_OUTPUT",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x55,
@@ -172,14 +177,14 @@ ep_configs = {
                         CONF_ATTRIBUTE_ID: 0x6F,
                         CONF_VALUE: 0,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "8BITMAP",
+                        CONF_TYPE: "MAP8",
                         CONF_REPORT: False,
                         CONF_SCALE: 1,
                     },
                     {
                         CONF_ATTRIBUTE_ID: 0x1C,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "CHAR_STRING",
+                        CONF_TYPE: "STRING",
                         CONF_REPORT: False,
                         CONF_SCALE: 1,
                     },
@@ -187,20 +192,81 @@ ep_configs = {
             },
         ],
     },
-    "temperature": {
+    DEVICE_CLASS_TEMPERATURE: {
         CONF_DEVICE_TYPE: "TEMPERATURE_SENSOR",
         CONF_CLUSTERS: [
             {
-                CONF_ID: "TEMP_MEASUREMENT",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ID: "TEMPERATURE_MEASUREMENT",
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
                         CONF_VALUE: 0,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "S16",
+                        CONF_TYPE: "INT16",
                         CONF_REPORT: True,
                         CONF_SCALE: 100,
+                        CONF_DEVICE: None,
+                    },
+                ],
+            },
+        ],
+    },
+    DEVICE_CLASS_HUMIDITY: {
+        CONF_DEVICE_TYPE: 0xFFF2,
+        CONF_CLUSTERS: [
+            {
+                CONF_ID: "REL_HUMIDITY_MEASUREMENT",
+                CONF_ROLE: "SERVER",
+                CONF_ATTRIBUTES: [
+                    {
+                        CONF_ATTRIBUTE_ID: 0x0,
+                        CONF_VALUE: 0,
+                        CONF_ACCESS: 0,
+                        CONF_TYPE: "UINT16",
+                        CONF_REPORT: True,
+                        CONF_SCALE: 100,
+                        CONF_DEVICE: None,
+                    },
+                ],
+            },
+        ],
+    },
+    DEVICE_CLASS_ATMOSPHERIC_PRESSURE: {
+        CONF_DEVICE_TYPE: 0xFFF2,
+        CONF_CLUSTERS: [
+            {
+                CONF_ID: "PRESSURE_MEASUREMENT",
+                CONF_ROLE: "SERVER",
+                CONF_ATTRIBUTES: [
+                    {
+                        CONF_ATTRIBUTE_ID: 0x0,
+                        CONF_VALUE: 0,
+                        CONF_ACCESS: 0,
+                        CONF_TYPE: "INT16",
+                        CONF_REPORT: True,
+                        CONF_SCALE: 1,
+                        CONF_DEVICE: None,
+                    },
+                ],
+            },
+        ],
+    },
+    DEVICE_CLASS_ILLUMINANCE: {
+        CONF_DEVICE_TYPE: 0xFFF2,
+        CONF_CLUSTERS: [
+            {
+                CONF_ID: "ILLUMINANCE_MEASUREMENT",
+                CONF_ROLE: "SERVER",
+                CONF_ATTRIBUTES: [
+                    {
+                        CONF_ATTRIBUTE_ID: 0x0,
+                        CONF_VALUE: 0,
+                        CONF_ACCESS: 0,
+                        CONF_TYPE: "UINT16",
+                        CONF_REPORT: True,
+                        CONF_LAMBDA: cv.lambda_(Lambda("return log10(x)*10000 + 1;")),
+                        CONF_SCALE: 1,
                         CONF_DEVICE: None,
                     },
                 ],
@@ -212,7 +278,7 @@ ep_configs = {
         CONF_CLUSTERS: [
             {
                 CONF_ID: "ON_OFF",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
@@ -232,7 +298,7 @@ ep_configs = {
         CONF_CLUSTERS: [
             {
                 CONF_ID: "ON_OFF",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
@@ -252,7 +318,7 @@ ep_configs = {
         CONF_CLUSTERS: [
             {
                 CONF_ID: "ON_OFF",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
@@ -266,14 +332,14 @@ ep_configs = {
                 ],
             },
             {
-                CONF_ID: "LEVEL_CONTROL",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ID: "LEVEL",
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
                         CONF_VALUE: 255,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "U8",
+                        CONF_TYPE: "UINT8",
                         CONF_REPORT: True,
                         CONF_SCALE: 1,
                         CONF_DEVICE: None,
@@ -282,13 +348,13 @@ ep_configs = {
             },
             {
                 CONF_ID: "COLOR_CONTROL",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x3,
                         CONF_VALUE: 0x616B,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "U16",
+                        CONF_TYPE: "UINT16",
                         CONF_REPORT: True,
                         CONF_SCALE: 1,
                         CONF_DEVICE: None,
@@ -297,7 +363,7 @@ ep_configs = {
                         CONF_ATTRIBUTE_ID: 0x4,
                         CONF_VALUE: 0x607D,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "U16",
+                        CONF_TYPE: "UINT16",
                         CONF_REPORT: True,
                         CONF_SCALE: 1,
                         CONF_DEVICE: None,
@@ -306,7 +372,7 @@ ep_configs = {
                         CONF_ATTRIBUTE_ID: 0x400A,
                         CONF_VALUE: 8,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "16BITMAP",
+                        CONF_TYPE: "MAP16",
                         CONF_REPORT: False,
                         CONF_SCALE: 1,
                     },
@@ -319,7 +385,7 @@ ep_configs = {
         CONF_CLUSTERS: [
             {
                 CONF_ID: "ON_OFF",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
@@ -334,13 +400,13 @@ ep_configs = {
             },
             {
                 CONF_ID: "LEVEL_CONTROL",
-                CONF_ROLE: CLUSTER_ROLE["SERVER"],
+                CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
                         CONF_VALUE: 255,
                         CONF_ACCESS: 0,
-                        CONF_TYPE: "U8",
+                        CONF_TYPE: "UINT8",
                         CONF_REPORT: True,
                         CONF_SCALE: 1,
                         CONF_DEVICE: None,
@@ -400,7 +466,7 @@ BACNET_UNIT = {
 def create_device_ep(eps, dev, generic=False):
     ep = {}
     ep[CONF_NUM] = get_next_ep_num(eps)
-    if dev["id"].type.inherits_from(sensor.Sensor):
+    if dev["id"].type.inherits_from(Sensor):
         if dev.get(CONF_DEVICE_CLASS, "") in ep_configs and not generic:
             ep.update(copy.deepcopy(ep_configs[dev[CONF_DEVICE_CLASS]]))
         else:
@@ -411,7 +477,7 @@ def create_device_ep(eps, dev, generic=False):
             unit = dev.get(CONF_UNIT_OF_MEASUREMENT)
             apptype = ANALOG_INPUT_APPTYPE.get((dev_class, unit))
             bacunit = BACNET_UNIT.get(unit)
-            if apptype:
+            if apptype is not None:
                 ep[CONF_CLUSTERS][0][CONF_ATTRIBUTES].append(
                     {
                         CONF_ATTRIBUTE_ID: 0x100,
@@ -422,7 +488,7 @@ def create_device_ep(eps, dev, generic=False):
                         CONF_SCALE: 1,
                     },
                 )
-            elif bacunit:
+            if bacunit is not None:
                 ep[CONF_CLUSTERS][0][CONF_ATTRIBUTES].append(
                     {
                         CONF_ATTRIBUTE_ID: 0x75,
@@ -434,22 +500,16 @@ def create_device_ep(eps, dev, generic=False):
                     },
                 )
 
-    elif dev["id"].type.inherits_from(switch.Switch):
+    elif dev["id"].type.inherits_from(Switch):
         if generic:
             ep.update(copy.deepcopy(ep_configs["binary_output"]))
         else:
             ep.update(copy.deepcopy(ep_configs["on_off"]))
-    elif dev["id"].type.inherits_from(binary_sensor.BinarySensor):
+    elif dev["id"].type.inherits_from(BinarySensor):
         ep.update(copy.deepcopy(ep_configs["binary_input"]))
     elif dev["id"].type.inherits_from(light.LightState):
-        if dev["platform"] in ["binary", "status_led"] or (
-            "output" in dev and dev["output"].type.inherits_from(output.BinaryOutput)
-        ):
-            if generic:
-                ep.update(copy.deepcopy(ep_configs["binary_output"]))
-            else:
-                ep.update(copy.deepcopy(ep_configs["on_off_light"]))
-        elif (
+        # NB: output.FloatOutput is a subclass of output.BinaryOutput thus must be checked first
+        if (
             dev["platform"] in ["monochromatic"]
             or "dimmer" in dev["platform"]
             or (
@@ -463,12 +523,17 @@ def create_device_ep(eps, dev, generic=False):
                 )
             else:
                 ep.update(copy.deepcopy(ep_configs["level_light"]))
+        elif dev["platform"] in ["binary", "status_led"] or (
+            "output" in dev and dev["output"].type.inherits_from(output.BinaryOutput)
+        ):
+            if generic:
+                ep.update(copy.deepcopy(ep_configs["binary_output"]))
+            else:
+                ep.update(copy.deepcopy(ep_configs["on_off_light"]))
         else:
             ep.update(copy.deepcopy(ep_configs["color_light"]))
     for cl in ep.get(CONF_CLUSTERS, []):
         for attr in cl[CONF_ATTRIBUTES]:
-            if CONF_DEVICE in attr:  # connect device
-                attr[CONF_DEVICE] = dev["id"]
             if (
                 attr[CONF_ATTRIBUTE_ID] == 0x1C
                 and CONF_VALUE not in attr
@@ -477,10 +542,15 @@ def create_device_ep(eps, dev, generic=False):
                 name = dev["name"].encode("ascii", "ignore").decode()  # use unidecode
                 attr[CONF_VALUE] = str(name)
                 attr[CONF_MAX_LENGTH] = len(str(name))
-            id = ID(None, is_declaration=True, type=ZigBeeAttribute)
-            id.resolve(CORE.component_ids)
-            CORE.component_ids.add(id.id)
-            attr[CONF_ID] = id
+            if CONF_DEVICE in attr:  # connect device
+                attr[CONF_DEVICE] = dev["id"]
+                # create attribute ID
+                id = ID(None, is_declaration=True, type=ZigBeeAttribute)
+                id.resolve(CORE.component_ids)
+                CORE.component_ids.add(id.id)
+                attr[CONF_ID] = id
+            else:
+                attr[CONF_ID] = None
     return ep
 
 
@@ -504,15 +574,14 @@ def create_ep(config, full_conf):
         for ep in config[CONF_ENDPOINTS]:
             if CONF_NUM not in ep:
                 ep[CONF_NUM] = get_next_ep_num(eps)
+    ep_list = config.get(CONF_ENDPOINTS, [])
     if CONF_COMPONENTS in config:
         devs = [
             i["id"]
             for i in get_device_entries(full_conf.get("light", []), light.LightState)
-            + get_device_entries(full_conf.get("switch", []), switch.Switch)
-            + get_device_entries(full_conf.get("sensor", []), sensor.Sensor)
-            + get_device_entries(
-                full_conf.get("binary_sensor", []), binary_sensor.BinarySensor
-            )
+            + get_device_entries(full_conf.get("switch", []), Switch)
+            + get_device_entries(full_conf.get("sensor", []), Sensor)
+            + get_device_entries(full_conf.get("binary_sensor", []), BinarySensor)
         ]
 
         add_devices = []
@@ -527,11 +596,9 @@ def create_ep(config, full_conf):
                 for i in get_device_entries(
                     full_conf.get("light", []), light.LightState
                 )
-                + get_device_entries(full_conf.get("switch", []), switch.Switch)
-                + get_device_entries(full_conf.get("sensor", []), sensor.Sensor)
-                + get_device_entries(
-                    full_conf.get("binary_sensor", []), binary_sensor.BinarySensor
-                )
+                + get_device_entries(full_conf.get("switch", []), Switch)
+                + get_device_entries(full_conf.get("sensor", []), Sensor)
+                + get_device_entries(full_conf.get("binary_sensor", []), BinarySensor)
                 if i["id"] in list_devs
             ]
         if config[CONF_COMPONENTS] == "all":
@@ -540,24 +607,18 @@ def create_ep(config, full_conf):
                 for i in get_device_entries(
                     full_conf.get("light", []), light.LightState
                 )
-                + get_device_entries(full_conf.get("switch", []), switch.Switch)
-                + get_device_entries(full_conf.get("sensor", []), sensor.Sensor)
-                + get_device_entries(
-                    full_conf.get("binary_sensor", []), binary_sensor.BinarySensor
-                )
+                + get_device_entries(full_conf.get("switch", []), Switch)
+                + get_device_entries(full_conf.get("sensor", []), Sensor)
+                + get_device_entries(full_conf.get("binary_sensor", []), BinarySensor)
                 if ("name" in i) and not i.get("internal")
             ]
-        if CONF_ENDPOINTS not in config:
-            config[CONF_ENDPOINTS] = []
         for dev in add_devices:
-            config[CONF_ENDPOINTS].append(
-                create_device_ep(eps, dev, config[CONF_AS_GENERIC])
-            )
-    if not config.get(CONF_ENDPOINTS):
-        config[CONF_ENDPOINTS] = [
+            ep_list.append(create_device_ep(eps, dev, config[CONF_AS_GENERIC]))
+    if not ep_list:
+        ep_list = [
             {
                 CONF_DEVICE_TYPE: "CUSTOM_ATTR",
                 CONF_NUM: 1,
             }
         ]
-    return config, len(CORE.component_ids) - comp_ids
+    return ep_list, len(CORE.component_ids) - comp_ids

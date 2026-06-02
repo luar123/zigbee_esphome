@@ -1,11 +1,12 @@
 from dataclasses import dataclass
 
+import esphome.codegen as cg
+
 CONF_ENDPOINTS = "endpoints"
 CONF_DEVICE_TYPE = "device_type"
 CONF_NUM = "num"
 CONF_CLUSTERS = "clusters"
 CONF_ON_JOIN = "on_join"
-CONF_IDENT_TIME = "ident_time"
 CONF_MANUFACTURER = "manufacturer"
 CONF_ATTRIBUTES = "attributes"
 CONF_ROLE = "role"
@@ -19,6 +20,16 @@ CONF_ZIGBEE_ID = "zigbee_id"
 CONF_ROUTER = "router"
 CONF_AS_GENERIC = "as_generic"
 CONF_ON_REPORT = "on_report"
+CONF_TRUST_CENTER_KEY = "trust_center_key"
+CONF_DEVICE_VERSION = "device_version"
+
+# dummies for upstream compatibility
+binary_sensor_ns = cg.esphome_ns.namespace("binary_sensor")
+BinarySensor = binary_sensor_ns.class_("BinarySensor", cg.EntityBase)
+sensor_ns = cg.esphome_ns.namespace("sensor")
+Sensor = sensor_ns.class_("Sensor", cg.EntityBase)
+switch_ns = cg.esphome_ns.namespace("switch_")  # NB: "switch_" not "switch"
+Switch = switch_ns.class_("Switch", cg.EntityBase)
 
 
 @dataclass

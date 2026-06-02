@@ -7,12 +7,8 @@ external_components:
 
 esp32:
   board: esp32-h2-devkitm-1
-  #flash_size: 4MB
-  partitions: partitions_zb.csv
   framework:
     type: esp-idf
-    #sdkconfig_options:
-      #CONFIG_ESPTOOLPY_FLASHSIZE_4MB: y
 
 # Enable logging
 logger:

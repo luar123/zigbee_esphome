@@ -112,15 +112,6 @@ By adding `components: all` the endpoint definition is generated automatically. 
 | `binary_sensor` | `binary_input`                                                     |
 | `sensor`        | `analog_input` or mapped to specific (e.g. `temperature`) clusters |
 
-**Important**: you must include the required partition table file in your ESP32 configuration each time that you using this components:
-
-```yaml
-esp32:
-  partitions: partitions_zb.csv
-```
-
-This file is mandatory for proper operation and can be found in the component directory. It defines the memory partitions needed for Zigbee operations.
-
 ### Example:
 ```yaml
 zigbee:

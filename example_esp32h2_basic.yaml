@@ -7,13 +7,12 @@ external_components:
 
 esp32:
   board: esp32-h2-devkitm-1
-  partitions: partitions_zb.csv
   framework:
     type: esp-idf
 
 # Enable logging
 logger:
-  hardware_uart: UART0
+  hardware_uart: USB_SERIAL_JTAG
 
 sensor:
   - platform: internal_temperature
