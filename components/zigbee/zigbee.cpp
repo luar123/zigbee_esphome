@@ -64,6 +64,7 @@ void ZigBeeComponent::report() {
 
 void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
   static uint8_t steering_retry_count = 0;
+  static uint8_t init_retry_count = 0;
   uint32_t *p_sg_p = signal_struct->p_app_signal;
   esp_err_t err_status = signal_struct->esp_err_status;
   esp_zb_app_signal_type_t sig_type = (esp_zb_app_signal_type_t) *p_sg_p;
@@ -82,6 +83,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
       if (err_status == ESP_OK) {
         ESP_LOGD(TAG, "Device started up in %sfactory-reset mode", esp_zb_bdb_is_factory_new() ? "" : "non ");
         global_zigbee->started_ = true;
+        init_retry_count = 0;
         if (esp_zb_bdb_is_factory_new()) {
           ESP_LOGD(TAG, "Start network steering");
           esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
@@ -90,11 +92,21 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
           global_zigbee->searchBindings();
         }
       } else {
-        ESP_LOGE(TAG, "FIRST_START.  Device started up in %sfactory-reset mode with an error %d (%s)",
-                 esp_zb_bdb_is_factory_new() ? "" : "non ", err_status, esp_err_to_name(err_status));
-        ESP_LOGW(TAG, "Failed to initialize Zigbee stack (status: %s)", esp_err_to_name(err_status));
-        esp_zb_scheduler_alarm((esp_zb_callback_t) bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_INITIALIZATION,
-                               1000);
+        if (init_retry_count < 3) {
+          ESP_LOGE(TAG, "FIRST_START.  Device started up in %sfactory-reset mode with an error %d (%s)",
+                   esp_zb_bdb_is_factory_new() ? "" : "non ", err_status, esp_err_to_name(err_status));
+          ESP_LOGW(TAG, "Failed to initialize Zigbee stack (status: %s)", esp_err_to_name(err_status));
+          init_retry_count++;
+          esp_zb_scheduler_alarm((esp_zb_callback_t) bdb_start_top_level_commissioning_cb,
+                                 ESP_ZB_BDB_MODE_INITIALIZATION, 1000);
+        } else {
+          if (init_retry_count == 3) {
+            ESP_LOGW(TAG, "Zigbee stack init still failing, switching to 15s retry interval");
+          }
+          if (init_retry_count < 4) init_retry_count++;
+          esp_zb_scheduler_alarm((esp_zb_callback_t) bdb_start_top_level_commissioning_cb,
+                                 ESP_ZB_BDB_MODE_INITIALIZATION, 15000);
+        }
       }
       break;
     case ESP_ZB_BDB_SIGNAL_STEERING:
