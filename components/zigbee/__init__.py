@@ -97,6 +97,13 @@ except ImportError:
         pass
 
 
+try:
+    from esphome.const import Toolchain
+
+    has_toolchain = True
+except ImportError:
+    has_toolchain = False
+
 _LOGGER = logging.getLogger(__name__)
 
 _supports_synchronous = (
@@ -255,6 +262,15 @@ def validate_attributes(config):
 
 
 def final_validate(config):
+    if (
+        config.get(CONF_COMPONENTS)
+        and config[CONF_COMPONENTS] != "none"
+        and has_toolchain
+        and CORE.toolchain != Toolchain.PLATFORMIO
+    ):
+        raise cv.Invalid(
+            "Zigbee basic mode is only supported with PlatformIO toolchain. Please switch to PlatformIO."
+        )
     esp_conf = fv.full_config.get()["esp32"]
     if CONF_PARTITIONS in esp_conf:
         with open(

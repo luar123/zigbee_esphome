@@ -7,6 +7,7 @@ external_components:
 
 esp32:
   board: esp32-h2-devkitm-1
+  toolchain: platformio
   framework:
     type: esp-idf
 
