@@ -422,8 +422,9 @@ def find_attr(conf, id):
     for ep in conf[CONF_ENDPOINTS]:
         for cl in ep.get(CONF_CLUSTERS, []):
             for attr in cl.get(CONF_ATTRIBUTES, []):
-                if attr[CONF_ID] == id:
-                    return attr
+                if CONF_ID in attr:
+                    if attr[CONF_ID] == id:
+                        return attr
     raise EsphomeError(f"Zigbee: Cannot find attribute {id}.")
 
 
