@@ -265,7 +265,14 @@ ep_configs = {
                         CONF_ACCESS: 0,
                         CONF_TYPE: "UINT16",
                         CONF_REPORT: True,
-                        CONF_LAMBDA: cv.lambda_(Lambda("return log10(x)*10000 + 1;")),
+                        CONF_LAMBDA: cv.lambda_(
+                            Lambda(
+                                "if (x < 0.0f || std::isnan(x)) return 0xFFFF;"  # NaN
+                                " if (x < 1.0f) return 0;"  # too small to measure
+                                " const float v = log10(x)*10000 + 1;"
+                                " return v > 65534.0f ? 0xFFFE : (uint16_t) lroundf(v);"  # clamp to 0xFFFE if too large
+                            )
+                        ),
                         CONF_SCALE: 1,
                         CONF_DEVICE: None,
                     },
