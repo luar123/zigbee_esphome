@@ -406,7 +406,7 @@ ep_configs = {
                 ],
             },
             {
-                CONF_ID: "LEVEL_CONTROL",
+                CONF_ID: "LEVEL",
                 CONF_ROLE: "SERVER",
                 CONF_ATTRIBUTES: [
                     {
