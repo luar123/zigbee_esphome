@@ -115,7 +115,7 @@ ep_configs = {
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x55,
-                        CONF_VALUE: False,
+                        CONF_VALUE: float("nan"),
                         CONF_ACCESS: 0,
                         CONF_TYPE: "SINGLE",
                         CONF_REPORT: True,
@@ -201,7 +201,7 @@ ep_configs = {
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
-                        CONF_VALUE: 0,
+                        CONF_VALUE: 0x8000,
                         CONF_ACCESS: 0,
                         CONF_TYPE: "INT16",
                         CONF_REPORT: True,
@@ -221,7 +221,7 @@ ep_configs = {
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
-                        CONF_VALUE: 0,
+                        CONF_VALUE: 0xFFFF,
                         CONF_ACCESS: 0,
                         CONF_TYPE: "UINT16",
                         CONF_REPORT: True,
@@ -241,7 +241,7 @@ ep_configs = {
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
-                        CONF_VALUE: 0,
+                        CONF_VALUE: 0x8000,
                         CONF_ACCESS: 0,
                         CONF_TYPE: "INT16",
                         CONF_REPORT: True,
@@ -261,7 +261,7 @@ ep_configs = {
                 CONF_ATTRIBUTES: [
                     {
                         CONF_ATTRIBUTE_ID: 0x0,
-                        CONF_VALUE: 0,
+                        CONF_VALUE: 0xFFFF,
                         CONF_ACCESS: 0,
                         CONF_TYPE: "UINT16",
                         CONF_REPORT: True,
