@@ -16,7 +16,9 @@ void ZigBeeAttribute::set_attr_() {
     this->set_attr_requested_ = false;
     // Check for error
     if (state != EZB_ZCL_STATUS_SUCCESS) {
-      ESP_LOGE(TAG, "Setting attribute failed: %s", state);
+      ESP_LOGE(TAG, "Setting attribute failed: status=0x%02x (endpoint %u, cluster 0x%04x, attr 0x%04x)",
+               (unsigned) state, (unsigned) this->endpoint_id_, (unsigned) this->cluster_id_,
+               (unsigned) this->attr_id_);
     }
     ESP_LOGD(TAG, "Attribute set!");
     esp_zigbee_lock_release();

@@ -14,18 +14,6 @@ logger:
 
 zigbee:
   id: "zb"
-  endpoints:
-    # We need at least one endpoint defined
-    - device_type: TEMPERATURE_SENSOR
-      num: 1
-      clusters:
-        - id: TEMPERATURE_MEASUREMENT
-          attributes:
-            - attribute_id: 0x0
-              type: INT16
-              report: true
-              id: zb_temp
-              value: 0
   on_join:
     then:
       - logger.log: "Joined network"
