@@ -277,12 +277,9 @@ def final_validate(config):
         if "power_management" not in fv.full_config.get():
             raise cv.Invalid("Power management is needed for sleepy Zigbee devices.")
         pm_conf = fv.full_config.get()["power_management"]
+        pm_conf = [pm for pm in pm_conf if pm.get("platform") == "esp32_pm"][0]
         if pm_conf.get("enable_light_sleep", False) is False:
             raise cv.Invalid("Light sleep must be enabled for sleepy Zigbee devices.")
-        if pm_conf.get("power_down_peripherals", False) is False:
-            raise cv.Invalid(
-                "Peripherals must be powered down for sleepy Zigbee devices."
-            )
     global comp_ids  # noqa: PLW0603
     comp_ids = len(CORE.component_ids)
     return config
