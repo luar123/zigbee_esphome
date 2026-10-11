@@ -549,10 +549,8 @@ void ZigBeeComponent::setup() {
 
   ezb_nwk_set_min_join_lqi(32);
 
-#ifdef CONFIG_FREERTOS_USE_TICKLESS_IDLE
-  ESP_LOGD(TAG, "Enabling Zigbee Sleepy End Device: %s", this->sleepy_ ? "enabled" : "disabled");
+  ESP_LOGD(TAG, "Zigbee Sleepy End Device: %s", this->sleepy_ ? "enabled" : "disabled");
   ezb_nwk_set_rx_on_when_idle(!this->sleepy_);  // if sleepy, disable RX when idle to allow sleeping
-#endif
 
   uint8_t power_source = static_cast<uint8_t>(this->basic_cluster_data_.power == EZB_ZCL_BASIC_POWER_SOURCE_BATTERY
                                                   ? EZB_AF_NODE_POWER_SOURCE_RECHARGEABLE_BATTERY
