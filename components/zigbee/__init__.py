@@ -86,12 +86,14 @@ from .zigbee_const import ATTR_ACCESS, ATTR_TYPE, CLUSTER_ID, CLUSTER_ROLE, DEVI
 from .zigbee_ep import create_ep
 
 try:
-    from esphome.components.esp32s import require_mbedtls_tls_extras
+    from esphome.components.esp32 import require_mbedtls_tls_extras
 except ImportError:
 
     def require_mbedtls_tls_extras(var):
         pass
 
+
+DOMAIN = "zigbee"
 
 _LOGGER = logging.getLogger(__name__)
 

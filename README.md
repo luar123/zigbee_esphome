@@ -145,7 +145,7 @@ zigbee:
                   - light.control:
                       id: light_1
                       state: !lambda "return (bool)x;"
-        - id: LEVEL_CONTROL
+        - id: LEVEL
           attributes:
             - attribute_id: 0
               type: U8
