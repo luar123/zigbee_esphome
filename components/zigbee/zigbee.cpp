@@ -475,8 +475,9 @@ void ZigBeeComponent::setup_reporting() {
   esp_zigbee_lock_release();
 }
 
-ZigBeeComponent::ZigBeeComponent(uint16_t keep_alive) {
-  this->keep_alive_ = keep_alive;
+ZigBeeComponent::ZigBeeComponent(uint16_t keep_alive) { this->keep_alive_ = keep_alive; }
+
+void ZigBeeComponent::setup() {
   /* initialize Zigbee stack */
   esp_zigbee_platform_config_t platform_config = {
       .storage_partition_name = ESP_ZIGBEE_STORAGE_PARTITION_NAME,
@@ -504,9 +505,6 @@ ZigBeeComponent::ZigBeeComponent(uint16_t keep_alive) {
     this->mark_failed();
     return;
   }
-}
-
-void ZigBeeComponent::setup() {
 #ifdef CONFIG_WIFI_COEX
   if (esp_coex_wifi_i154_enable() != ESP_OK) {
     this->mark_failed();
