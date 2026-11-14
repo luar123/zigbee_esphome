@@ -327,3 +327,7 @@ If looking to contribute to this project, then suggest follow steps in these gui
       - [Zigbee HA Light Bulb example](https://github.com/espressif/esp-zigbee-sdk/tree/main/examples/esp_zigbee_HA_sample/HA_on_off_light)
       - [Zigbee HA temperature sensor example](https://github.com/espressif/esp-zigbee-sdk/tree/main/examples/esp_zigbee_HA_sample/HA_temperature_sensor)
       - [Zigbee HA thermostat example](https://github.com/espressif/esp-zigbee-sdk/tree/main/examples/esp_zigbee_HA_sample/HA_thermostat)
+
+## License
+
+This project follows the licensing of ESPHome. The C++/runtime code (`.c`, `.cpp`, `.h`) is licensed under GPLv3, and the Python code and everything else is licensed under MIT. See [LICENSE](LICENSE) for the full text of both licenses.
